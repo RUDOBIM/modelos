@@ -1,5 +1,5 @@
 {
- "actualizado": "2026-11-12T22:16:30.212Z",
+ "actualizado": "2026-11-12T23:01:41.126Z",
  "modelos": [
   {
    "nombre": "001-BLO-A-ARQ-VAR-V1",
@@ -7,8 +7,9 @@
    "tipo": "Completo",
    "ruta": "modelos/casa-de-campo--001-blo-a-arq-var-v1.glb",
    "miniatura": "miniaturas/casa-de-campo--001-blo-a-arq-var-v1.jpg",
+   "usdz": "modelos/casa-de-campo--001-blo-a-arq-var-v1.usdz",
    "bytes": 7967128,
-   "fecha": "2026-11-12T22:12:07.489Z"
+   "fecha": "2026-11-12T23:01:41.115Z"
   },
   {
    "nombre": "KOF-SU-SJDR-0665-CCT-ARQ-M3D-Arquitectura-A00",
@@ -16,6 +17,7 @@
    "tipo": "Completo",
    "ruta": "modelos/taller-mecanico--kof-su-sjdr-0665-cct-arq-m3d-arquitectura-a00.glb",
    "miniatura": "miniaturas/taller-mecanico--kof-su-sjdr-0665-cct-arq-m3d-arquitectura-a00.jpg",
+   "usdz": "",
    "bytes": 18689728,
    "fecha": "2026-11-12T22:16:30.200Z"
   }
