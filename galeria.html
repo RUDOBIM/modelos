@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Modelos 3D · BIM Loading</title>
+<meta name="description" content="Modelos 3D publicados por BIM Loading.">
+<style>
+  :root { --acento: #0a84ff; --texto: #1c2733; --tenue: #5d6b7c; --borde: #d7dde5; --fondo: #eef1f5; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--fondo); color: var(--texto);
+         font: 14px/1.45 "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif; }
+  header { position: sticky; top: 0; z-index: 2; background: rgba(255,255,255,.92); backdrop-filter: blur(8px);
+           border-bottom: 1px solid var(--borde); }
+  .cont { max-width: 1180px; margin: 0 auto; padding: 0 18px; }
+  .cab { display: flex; align-items: center; gap: 14px; height: 60px; }
+  .marca { font-weight: 700; letter-spacing: .14em; font-size: 14px; color: #0b1220; white-space: nowrap; }
+  .marca span { color: var(--acento); }
+  .sep { width: 1px; height: 22px; background: var(--borde); }
+  .sub { color: var(--tenue); white-space: nowrap; }
+  .buscar { margin-left: auto; flex: 0 1 280px; min-width: 0; padding: 8px 12px; border: 1px solid var(--borde);
+            border-radius: 10px; font: inherit; background: #fff; color: var(--texto); }
+  .buscar:focus { outline: 2px solid var(--acento); outline-offset: 0; border-color: transparent; }
+  main { padding: 26px 0 50px; }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  .intro { color: var(--tenue); margin: 0 0 22px; }
+  .proyecto { margin: 26px 0 12px; display: flex; align-items: baseline; gap: 10px; }
+  .proyecto h2 { font-size: 16px; margin: 0; }
+  .proyecto small { color: var(--tenue); }
+  .rejilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .tarjeta { background: #fff; border: 1px solid var(--borde); border-radius: 14px; overflow: hidden;
+             display: flex; flex-direction: column; box-shadow: 0 2px 8px rgba(16,24,40,.05);
+             transition: box-shadow .15s, transform .15s; }
+  .tarjeta:hover { box-shadow: 0 8px 24px rgba(16,24,40,.12); transform: translateY(-2px); }
+  .portada { display: block; aspect-ratio: 16/9; position: relative; text-decoration: none;
+             background: linear-gradient(135deg, #e7edf5 0%, #d5e3f6 100%); }
+  .portada svg { position: absolute; inset: 0; margin: auto; width: 74px; height: 74px; fill: none;
+                 stroke: #7f9cc2; stroke-width: 1.2; stroke-linejoin: round; }
+  .portada .ir { position: absolute; right: 10px; bottom: 10px; padding: 4px 10px; border-radius: 999px;
+                 background: var(--acento); color: #fff; font-size: 12px; font-weight: 600; }
+  .cuerpo { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+  .nombre { font-weight: 600; word-break: break-word; }
+  .meta { color: var(--tenue); font-size: 12px; }
+  .acciones { display: flex; gap: 6px; margin-top: auto; padding-top: 6px; }
+  .acciones a, .acciones button { flex: 1; padding: 7px 6px; border-radius: 9px; font: inherit; font-size: 12.5px;
+               text-align: center; cursor: pointer; text-decoration: none; border: 1px solid var(--borde);
+               background: #fff; color: var(--texto); white-space: nowrap; }
+  .acciones a.prim { background: var(--acento); border-color: var(--acento); color: #fff; font-weight: 600; }
+  .acciones button:hover { background: #f1f4f8; }
+  .acciones button.ok { color: #0a7d32; border-color: #0a7d32; }
+  .aviso { padding: 40px 20px; text-align: center; color: var(--tenue); background: #fff;
+           border: 1px dashed var(--borde); border-radius: 14px; }
+  .aviso.error { color: #a12020; }
+  footer { color: var(--tenue); font-size: 12px; padding: 20px 0 30px; text-align: center; }
+  footer a { color: var(--tenue); }
+  @media (max-width: 640px) {
+    .sub, .sep { display: none; }
+    .cab { height: 54px; }
+    .buscar { flex-basis: 170px; }
+    h1 { font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="cont cab">
+    <div class="marca">BIM <span>LOADING</span></div>
+    <div class="sep"></div>
+    <div class="sub">Modelos 3D</div>
+    <input class="buscar" id="buscar" type="search" placeholder="Buscar modelo o proyecto…" aria-label="Buscar modelo o proyecto">
+  </div>
+</header>
+<main class="cont">
+  <h1>Modelos 3D</h1>
+  <p class="intro">Explora los modelos en el navegador, en PC o celular, sin instalar nada.</p>
+  <div id="estado" class="aviso">Cargando modelos…</div>
+  <div id="lista"></div>
+</main>
+<footer class="cont">© <span id="anio"></span> BIM Loading · <a href="https://www.bimloading.com" target="_blank" rel="noopener">www.bimloading.com</a></footer>
+
+<script>
+(() => {
+  const REPO = "RUDOBIM/modelos", CARPETA = "modelos";
+  const $ = (id) => document.getElementById(id);
+  $("anio").textContent = new Date().getFullYear();
+
+  const icono = '<svg viewBox="0 0 64 64"><path d="M32 6 56 19v26L32 58 8 45V19Z"/><path d="M8 19l24 13 24-13M32 32v26"/></svg>';
+  const capital = (t) => t.replace(/-/g, " ").replace(/\s+/g, " ").trim().replace(/^./, (c) => c.toUpperCase());
+  const tam = (b) => b >= 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(b / 1024)) + " KB";
+  const esc = (t) => t.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  // "casa-de-campo--001-blo-a-arq.glb" -> proyecto "Casa de campo", nombre "001-BLO-A-ARQ"
+  function describir(archivo) {
+    const base = archivo.name.replace(/\.glb$/i, "");
+    const i = base.indexOf("--");
+    const proyecto = i > 0 ? capital(base.slice(0, i)) : "Otros";
+    const nombre = (i > 0 ? base.slice(i + 2) : base).toUpperCase();
+    return { proyecto, nombre, ruta: CARPETA + "/" + archivo.name, peso: archivo.size };
+  }
+
+  const urlVisor = (m) => new URL("./?m=" + encodeURIComponent(m.ruta) + "&t=" + encodeURIComponent(m.nombre), location.href).href;
+  const insert = (m) => '<iframe src="' + urlVisor(m) + '" width="100%" height="600" style="border:0" allow="fullscreen" allowfullscreen loading="lazy" title="' + esc(m.nombre) + '"></iframe>';
+
+  async function copiar(btn, texto) {
+    try { await navigator.clipboard.writeText(texto); }
+    catch (e) {
+      const t = document.createElement("textarea"); t.value = texto; document.body.appendChild(t);
+      t.select(); document.execCommand("copy"); t.remove();
+    }
+    const antes = btn.textContent; btn.textContent = "Copiado ✓"; btn.classList.add("ok");
+    setTimeout(() => { btn.textContent = antes; btn.classList.remove("ok"); }, 1600);
+  }
+
+  let modelos = [];
+  function pintar(filtro) {
+    const f = (filtro || "").toLowerCase().trim();
+    const vis = modelos.filter((m) => !f || (m.proyecto + " " + m.nombre).toLowerCase().includes(f));
+    const lista = $("lista"); lista.innerHTML = "";
+    if (!vis.length) {
+      $("estado").hidden = false; $("estado").className = "aviso";
+      $("estado").textContent = modelos.length ? "Ningún modelo coincide con la búsqueda." : "Todavía no hay modelos publicados.";
+      return;
+    }
+    $("estado").hidden = true;
+    const grupos = new Map();
+    vis.forEach((m) => { if (!grupos.has(m.proyecto)) grupos.set(m.proyecto, []); grupos.get(m.proyecto).push(m); });
+    [...grupos.keys()].sort((a, b) => a.localeCompare(b, "es")).forEach((p) => {
+      const ms = grupos.get(p);
+      const h = document.createElement("div"); h.className = "proyecto";
+      h.innerHTML = "<h2>" + esc(p) + "</h2><small>" + ms.length + (ms.length === 1 ? " modelo" : " modelos") + "</small>";
+      const rej = document.createElement("div"); rej.className = "rejilla";
+      ms.sort((a, b) => a.nombre.localeCompare(b.nombre, "es")).forEach((m) => {
+        const url = urlVisor(m);
+        const t = document.createElement("article"); t.className = "tarjeta";
+        t.innerHTML =
+          '<a class="portada" href="' + esc(url) + '" aria-label="Abrir ' + esc(m.nombre) + '">' + icono + '<span class="ir">Ver 3D</span></a>' +
+          '<div class="cuerpo"><div class="nombre">' + esc(m.nombre) + '</div>' +
+          '<div class="meta">' + esc(m.proyecto) + " · " + tam(m.peso) + '</div>' +
+          '<div class="acciones"><a class="prim" href="' + esc(url) + '">Abrir</a>' +
+          '<button type="button" data-a="enlace">Copiar enlace</button>' +
+          '<button type="button" data-a="insert">Código Insert</button></div></div>';
+        t.querySelector('[data-a="enlace"]').onclick = (e) => copiar(e.currentTarget, url);
+        t.querySelector('[data-a="insert"]').onclick = (e) => copiar(e.currentTarget, insert(m));
+        rej.appendChild(t);
+      });
+      lista.append(h, rej);
+    });
+  }
+
+  async function cargar() {
+    try {
+      const r = await fetch("https://api.github.com/repos/" + REPO + "/contents/" + CARPETA + "?t=" + Date.now(),
+                            { headers: { accept: "application/vnd.github+json" } });
+      if (r.status === 404) { modelos = []; pintar(); return; }
+      if (!r.ok) throw new Error(r.status === 403 ? "límite de consultas de GitHub alcanzado; intenta en unos minutos" : "error " + r.status);
+      const datos = await r.json();
+      modelos = datos.filter((a) => a.type === "file" && /\.glb$/i.test(a.name)).map(describir);
+      pintar($("buscar").value);
+    } catch (e) {
+      $("estado").hidden = false; $("estado").className = "aviso error";
+      $("estado").textContent = "No se pudo cargar la lista de modelos (" + e.message + ").";
+    }
+  }
+  $("buscar").addEventListener("input", (e) => pintar(e.target.value));
+  cargar();
+})();
+</script>
+</body>
+</html>
