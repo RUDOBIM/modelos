@@ -15,8 +15,9 @@
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: #eef1f5; }
+  model-viewer::part(default-ar-button) { display: none; }
   body { font: 14px/1.4 "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif; color: var(--texto); }
-  model-viewer { position: fixed; inset: 0; width: 100%; height: 100%; background: #eef1f5;
+  model-viewer { position: fixed; top: 64px; left: 0; right: 0; bottom: 0; width: 100%; height: auto; background: #eef1f5;
                  --poster-color: transparent; --progress-bar-color: transparent; }
 
   .flotante { position: fixed; z-index: 3; background: rgba(255,255,255,.92); border: 1px solid var(--borde);
@@ -41,6 +42,11 @@
   .seg { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--borde); background: #fff; font: inherit;
          font-size: 13px; color: var(--texto); cursor: pointer; }
   .seg.activo { background: var(--acento); border-color: var(--acento); color: #fff; }
+  .escalas { display: flex; gap: 5px; flex-wrap: wrap; margin: 0 0 6px; align-items: center; }
+  .escalas .etq { font-size: 12.5px; color: var(--tenue); margin-right: 2px; }
+  .escalas .seg { padding: 5px 10px; font-size: 12.5px; }
+  #medida { margin: 0 0 12px; font-size: 12px; color: var(--tenue); }
+  #medida b { color: var(--texto); }
   .btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 14px;
          border-radius: 12px; border: 0; background: var(--acento); color: #fff; font: inherit; font-size: 15px;
          font-weight: 600; cursor: pointer; }
@@ -84,13 +90,24 @@
     <ol class="pasos">
       <li>Toca <b>Iniciar realidad aumentada</b> y permite el uso de la cámara.</li>
       <li>Apunta al <b>piso</b> (o a la pared) y mueve el teléfono despacio hasta que reconozca la superficie.</li>
-      <li>El modelo se coloca solo. <b>Arrastra</b> para moverlo, <b>gira con dos dedos</b> y <b>pellizca</b> para cambiar su tamaño.</li>
+      <li>El modelo se apoya sobre su <b>nivel 0</b>. <b>Arrastra</b> para moverlo y <b>gira con dos dedos</b>. Con la escala <b>Libre</b> también puedes pellizcar para cambiar su tamaño.</li>
     </ol>
     <div class="opciones" role="group" aria-label="Superficie">
       <span class="etq">Superficie:</span>
       <button type="button" class="seg activo" data-sup="floor">Piso o mesa</button>
       <button type="button" class="seg" data-sup="wall">Pared</button>
     </div>
+    <div class="escalas" role="group" aria-label="Escala">
+      <span class="etq">Escala:</span>
+      <button type="button" class="seg activo" data-esc="1">Real 1:1</button>
+      <button type="button" class="seg" data-esc="20">1:20</button>
+      <button type="button" class="seg" data-esc="50">1:50</button>
+      <button type="button" class="seg" data-esc="100">1:100</button>
+      <button type="button" class="seg" data-esc="200">1:200</button>
+      <button type="button" class="seg" data-esc="500">1:500</button>
+      <button type="button" class="seg" data-esc="libre" title="Ajusta el tamaño pellizcando con dos dedos">Libre</button>
+    </div>
+    <p id="medida"></p>
     <button id="iniciar" class="btn" type="button" disabled>
       <svg viewBox="0 0 24 24"><path d="M12 2l8 4.5v9L12 20l-8-4.5v-9z"/><path d="M4 6.5l8 4.5 8-4.5M12 11v9"/></svg>
       Iniciar realidad aumentada
@@ -114,6 +131,10 @@
   const modelo = parametros.get("m") || "";
   const titulo = parametros.get("t") || "";
   const mv = $("mv");
+  // La vista previa ocupa el espacio libre arriba del panel.
+  const ajustarVista = () => { mv.style.bottom = ($("panel").offsetHeight + 24) + "px"; };
+  new ResizeObserver(ajustarVista).observe($("panel"));
+  window.addEventListener("resize", ajustarVista);
 
   // Regresar al visor con el mismo modelo.
   $("volver").href = "./" + location.search;
@@ -150,9 +171,82 @@
     });
   }
 
-  customElements.whenDefined("model-viewer").then(() => {
-    mv.src = new URL(modelo, location.href).href;
+  // Versión de RA (recortada en el nivel 0 y aligerada) que prepara el Hub; si no existe, el GLB del visor.
+  const rutaRa = modelo.replace(/\.glb$/i, ".ra.glb");
+  const revisarRa = fetch(rutaRa, { method: "HEAD", cache: "no-store" }).then((r) => r.ok).catch(() => false);
+  Promise.all([customElements.whenDefined("model-viewer"), revisarRa]).then(([, hayRa]) => {
+    mv.src = new URL(hayRa ? rutaRa : modelo, location.href).href;
   }).catch(() => estado("No se pudo cargar el visor de realidad aumentada. Revisa tu conexión.", true));
+
+  // ---------------------------------------------------------------- Escalas
+  // Real 1:1 y escalas de maqueta. En escalas fijas no se puede pellizcar, para que la medida sea exacta.
+  let escala = 1, libre = false, preparando = null, dimsBase = null;
+  const formato = (m) => m >= 1 ? m.toFixed(m >= 10 ? 1 : 2) + " m" : Math.round(m * 1000) + " mm";
+  function mostrarMedida() {
+    if (!dimsBase) return;
+    const k = libre ? 1 : escala;
+    const d = { x: dimsBase.x / k, y: dimsBase.y / k, z: dimsBase.z / k };
+    $("medida").innerHTML = (libre ? "Tamaño inicial: " : "Tamaño en tu espacio: ") +
+      "<b>" + formato(d.x) + " × " + formato(d.z) + "</b> de planta y <b>" + formato(d.y) + "</b> de alto.";
+  }
+  // iPhone: el USDZ trae un grupo "BIM_Escala"; se reescribe su transformación y se vuelve a empaquetar
+  // (sin convertir el modelo), cuidando la alineación de 64 bytes que exige AR Quick Look.
+  let usdzBase = null, blobActual = null;
+  async function usdzEscalado(k) {
+    const fflate = await import("./vendor/fflate.module.js");
+    if (!usdzBase) usdzBase = new Uint8Array(await (await fetch(rutaUsdz)).arrayBuffer());
+    const archivos = fflate.unzipSync(usdzBase);
+    const texto = new TextDecoder().decode(archivos["model.usda"]);
+    const i = texto.indexOf('def Xform "BIM_Escala"');
+    if (i < 0) throw new Error("sin grupo de escala");
+    const identidad = "( (1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0, 0, 0, 1) )";
+    const j = texto.indexOf(identidad, i);
+    const f = String(1 / k);
+    const nuevo = texto.slice(0, j) + "( (" + f + ", 0, 0, 0), (0, " + f + ", 0, 0), (0, 0, " + f + ", 0), (0, 0, 0, 1) )" + texto.slice(j + identidad.length);
+    archivos["model.usda"] = new TextEncoder().encode(nuevo);
+    const entrada = {};
+    let pos = 0;
+    for (const nombre of Object.keys(archivos)) {
+      const datos = archivos[nombre];
+      const base = pos + 30 + new TextEncoder().encode(nombre).length + 4;
+      const relleno = (64 - (base % 64)) % 64;
+      entrada[nombre] = [datos, { extra: { 12345: new Uint8Array(relleno) } }];
+      pos = base + relleno + datos.length;
+    }
+    return new Blob([fflate.zipSync(entrada, { level: 0 })], { type: "model/vnd.usdz+zip" });
+  }
+  async function aplicarEscala() {
+    const modo = libre ? "auto" : "fixed";
+    if (mv.getAttribute("ar-scale") !== modo) mv.setAttribute("ar-scale", modo);
+    const k = libre ? 1 : escala;
+    if (mv.loaded && !dimsBase) dimsBase = mv.getDimensions(); // tamaño real (escala 1:1)
+    mostrarMedida();
+    if (!esApple || !usdzListo) return;
+    if (blobActual) { URL.revokeObjectURL(blobActual); blobActual = null; }
+    if (k === 1) { mv.setAttribute("ios-src", new URL(rutaUsdz, location.href).href); return; }
+    $("iniciar").disabled = true;
+    estado("Preparando la escala 1:" + k + "…");
+    const tarea = preparando = usdzEscalado(k);
+    try {
+      const blob = await tarea;
+      if (tarea !== preparando) return;
+      blobActual = URL.createObjectURL(blob);
+      mv.setAttribute("ios-src", blobActual);
+      estado("");
+    } catch (e) {
+      estado("No se pudo preparar esa escala; se usará la escala real.", true);
+      mv.setAttribute("ios-src", new URL(rutaUsdz, location.href).href);
+    }
+    $("iniciar").disabled = false;
+  }
+  for (const b of document.querySelectorAll("[data-esc]")) {
+    b.addEventListener("click", () => {
+      libre = b.dataset.esc === "libre";
+      escala = libre ? 1 : Number(b.dataset.esc);
+      for (const o of document.querySelectorAll("[data-esc]")) o.classList.toggle("activo", o === b);
+      aplicarEscala();
+    });
+  }
 
   mv.addEventListener("progress", (e) => {
     const p = e.detail && e.detail.totalProgress || 0;
@@ -163,6 +257,7 @@
   mv.addEventListener("load", async () => {
     $("carga").hidden = true;
     await revisarUsdz;
+    aplicarEscala();
     if (esApple && !usdzListo) {
       $("iniciar").disabled = true;
       estado("Este modelo aún no tiene versión para iPhone. Vuelve a publicarlo desde el Hub de modelos (botón «Volver a publicar») y recarga esta página.", true);
@@ -183,6 +278,10 @@
 
   $("iniciar").addEventListener("click", () => {
     if (esApple && !usdzListo) return;
+    // La vista previa se queda a tamaño normal; la escala elegida se aplica solo dentro de la RA
+    // (en iPhone ya va dentro del archivo USDZ).
+    const k = libre ? 1 : escala;
+    if (!esApple) mv.scale = (1 / k) + " " + (1 / k) + " " + (1 / k);
     estado(esApple ? "Abriendo la vista de realidad aumentada de iPhone…" : "Abriendo la cámara…");
     try { mv.activateAR(); } catch (e) { estado("No se pudo iniciar la realidad aumentada en este dispositivo.", true); }
   });
@@ -191,8 +290,8 @@
     const s = e.detail && e.detail.status;
     if (s === "session-started") estado("Mueve el teléfono despacio apuntando a la superficie…");
     else if (s === "object-placed") estado("Modelo colocado. Arrastra, gira o pellizca para ajustarlo.");
-    else if (s === "not-presenting") estado("Puedes iniciar de nuevo o volver al visor.");
-    else if (s === "failed") estado("Tu dispositivo no pudo iniciar la realidad aumentada. Prueba con Chrome en Android o Safari en iPhone.", true);
+    else if (s === "not-presenting") { mv.scale = "1 1 1"; estado("Puedes iniciar de nuevo, cambiar la escala o volver al visor."); }
+    else if (s === "failed") mv.scale = "1 1 1", estado("Tu dispositivo no pudo iniciar la realidad aumentada. Prueba con Chrome en Android o Safari en iPhone.", true);
   });
 
   mv.addEventListener("ar-tracking", (e) => {
