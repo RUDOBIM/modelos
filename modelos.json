@@ -1,0 +1,14 @@
+{
+ "actualizado": "2026-11-12T22:12:07.489Z",
+ "modelos": [
+  {
+   "nombre": "001-BLO-A-ARQ-VAR-V1",
+   "proyecto": "CASA DE CAMPO",
+   "tipo": "Completo",
+   "ruta": "modelos/casa-de-campo--001-blo-a-arq-var-v1.glb",
+   "miniatura": "miniaturas/casa-de-campo--001-blo-a-arq-var-v1.jpg",
+   "bytes": 7967128,
+   "fecha": "2026-11-12T22:12:07.489Z"
+  }
+ ]
+}
