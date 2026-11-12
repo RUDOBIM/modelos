@@ -37,6 +37,9 @@
              background: linear-gradient(135deg, #e7edf5 0%, #d5e3f6 100%); }
   .portada svg { position: absolute; inset: 0; margin: auto; width: 74px; height: 74px; fill: none;
                  stroke: #7f9cc2; stroke-width: 1.2; stroke-linejoin: round; }
+  .portada img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #eef1f5; }
+  .portada .tipo { position: absolute; left: 10px; top: 10px; padding: 3px 9px; border-radius: 999px;
+                   background: rgba(11,18,32,.82); color: #fff; font-size: 11.5px; font-weight: 600; }
   .portada .ir { position: absolute; right: 10px; bottom: 10px; padding: 4px 10px; border-radius: 999px;
                  background: var(--acento); color: #fff; font-size: 12px; font-weight: 600; }
   .cuerpo { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
@@ -81,23 +84,15 @@
 
 <script>
 (() => {
-  const REPO = "RUDOBIM/modelos", CARPETA = "modelos";
   const $ = (id) => document.getElementById(id);
   $("anio").textContent = new Date().getFullYear();
 
   const icono = '<svg viewBox="0 0 64 64"><path d="M32 6 56 19v26L32 58 8 45V19Z"/><path d="M8 19l24 13 24-13M32 32v26"/></svg>';
-  const capital = (t) => t.replace(/-/g, " ").replace(/\s+/g, " ").trim().replace(/^./, (c) => c.toUpperCase());
   const tam = (b) => b >= 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(b / 1024)) + " KB";
-  const esc = (t) => t.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-
-  // "casa-de-campo--001-blo-a-arq.glb" -> proyecto "Casa de campo", nombre "001-BLO-A-ARQ"
-  function describir(archivo) {
-    const base = archivo.name.replace(/\.glb$/i, "");
-    const i = base.indexOf("--");
-    const proyecto = i > 0 ? capital(base.slice(0, i)) : "Otros";
-    const nombre = (i > 0 ? base.slice(i + 2) : base).toUpperCase();
-    return { proyecto, nombre, ruta: CARPETA + "/" + archivo.name, peso: archivo.size };
-  }
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  // "CASA DE CAMPO" -> "Casa de campo"
+  const proyectoBonito = (t) => (t || "Otros").toLowerCase().replace(/^./, (c) => c.toUpperCase());
+  const rutaSegura = (r) => typeof r === "string" && /^(modelos|miniaturas)\/[^/?#]+$/.test(r);
 
   const urlVisor = (m) => new URL("./?m=" + encodeURIComponent(m.ruta) + "&t=" + encodeURIComponent(m.nombre), location.href).href;
   const insert = (m) => '<iframe src="' + urlVisor(m) + '" width="100%" height="600" style="border:0" allow="fullscreen" allowfullscreen loading="lazy" title="' + esc(m.nombre) + '"></iframe>';
@@ -133,13 +128,17 @@
       ms.sort((a, b) => a.nombre.localeCompare(b.nombre, "es")).forEach((m) => {
         const url = urlVisor(m);
         const t = document.createElement("article"); t.className = "tarjeta";
+        const imagen = m.miniatura ? '<img src="' + esc(m.miniatura) + '?v=' + encodeURIComponent(m.fecha || "") + '" alt="" loading="lazy">' : "";
         t.innerHTML =
-          '<a class="portada" href="' + esc(url) + '" aria-label="Abrir ' + esc(m.nombre) + '">' + icono + '<span class="ir">Ver 3D</span></a>' +
+          '<a class="portada" href="' + esc(url) + '" aria-label="Abrir ' + esc(m.nombre) + '">' + icono + imagen +
+          (m.tipo ? '<span class="tipo">' + esc(m.tipo) + '</span>' : "") + '<span class="ir">Ver 3D</span></a>' +
           '<div class="cuerpo"><div class="nombre">' + esc(m.nombre) + '</div>' +
           '<div class="meta">' + esc(m.proyecto) + " · " + tam(m.peso) + '</div>' +
           '<div class="acciones"><a class="prim" href="' + esc(url) + '">Abrir</a>' +
           '<button type="button" data-a="enlace">Copiar enlace</button>' +
           '<button type="button" data-a="insert">Código Insert</button></div></div>';
+        const img = t.querySelector("img");
+        if (img) img.onerror = () => img.remove();
         t.querySelector('[data-a="enlace"]').onclick = (e) => copiar(e.currentTarget, url);
         t.querySelector('[data-a="insert"]').onclick = (e) => copiar(e.currentTarget, insert(m));
         rej.appendChild(t);
@@ -150,12 +149,15 @@
 
   async function cargar() {
     try {
-      const r = await fetch("https://api.github.com/repos/" + REPO + "/contents/" + CARPETA + "?t=" + Date.now(),
-                            { headers: { accept: "application/vnd.github+json" } });
+      // modelos.json lo escribe el Hub de BIM Loading al publicar o quitar un modelo.
+      const r = await fetch("modelos.json?v=" + Date.now(), { cache: "no-store" });
       if (r.status === 404) { modelos = []; pintar(); return; }
-      if (!r.ok) throw new Error(r.status === 403 ? "límite de consultas de GitHub alcanzado; intenta en unos minutos" : "error " + r.status);
+      if (!r.ok) throw new Error("error " + r.status);
       const datos = await r.json();
-      modelos = datos.filter((a) => a.type === "file" && /\.glb$/i.test(a.name)).map(describir);
+      modelos = (datos.modelos || []).filter((m) => rutaSegura(m.ruta)).map((m) => ({
+        nombre: String(m.nombre || ""), proyecto: proyectoBonito(m.proyecto), tipo: m.tipo || "",
+        ruta: m.ruta, miniatura: rutaSegura(m.miniatura) ? m.miniatura : "", peso: Number(m.bytes) || 0, fecha: m.fecha || ""
+      }));
       pintar($("buscar").value);
     } catch (e) {
       $("estado").hidden = false; $("estado").className = "aviso error";
