@@ -128,6 +128,20 @@
     return;
   }
 
+  // iPhone/iPad usan AR Quick Look con un archivo USDZ que el Hub prepara en la PC al publicar.
+  // Si el iPhone tuviera que convertir el modelo él mismo, Safari se queda sin memoria y recarga la página.
+  const esApple = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const rutaUsdz = modelo.replace(/\.glb$/i, ".usdz");
+  let usdzListo = false;
+  const revisarUsdz = fetch(rutaUsdz, { method: "HEAD", cache: "no-store" })
+    .then((r) => { if (r.ok) { usdzListo = true; mv.setAttribute("ios-src", new URL(rutaUsdz, location.href).href); } })
+    .catch(() => {});
+  if (esApple) {
+    // En AR Quick Look el modelo se coloca sobre superficies horizontales (piso o mesa).
+    const pared = document.querySelector('[data-sup="wall"]');
+    if (pared) pared.hidden = true;
+  }
+
   // Superficie: piso/mesa o pared.
   for (const b of document.querySelectorAll("[data-sup]")) {
     b.addEventListener("click", () => {
@@ -146,8 +160,14 @@
     $("carga-texto").textContent = "Cargando modelo… " + Math.round(p * 100) + " %";
   });
 
-  mv.addEventListener("load", () => {
+  mv.addEventListener("load", async () => {
     $("carga").hidden = true;
+    await revisarUsdz;
+    if (esApple && !usdzListo) {
+      $("iniciar").disabled = true;
+      estado("Este modelo aún no tiene versión para iPhone. Vuelve a publicarlo desde el Hub de modelos (botón «Volver a publicar») y recarga esta página.", true);
+      return;
+    }
     if (mv.canActivateAR) {
       $("iniciar").disabled = false;
       estado("");
@@ -162,7 +182,8 @@
   });
 
   $("iniciar").addEventListener("click", () => {
-    estado("Abriendo la cámara… En iPhone, preparar un modelo grande puede tardar unos segundos.");
+    if (esApple && !usdzListo) return;
+    estado(esApple ? "Abriendo la vista de realidad aumentada de iPhone…" : "Abriendo la cámara…");
     try { mv.activateAR(); } catch (e) { estado("No se pudo iniciar la realidad aumentada en este dispositivo.", true); }
   });
 
