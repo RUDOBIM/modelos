@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Realidad aumentada · BIM Loading</title>
+<script>
+  // model-viewer usa el decodificador Draco de este mismo sitio (los modelos "Web comprimido" lo necesitan).
+  self.ModelViewerElement = self.ModelViewerElement || {};
+  self.ModelViewerElement.dracoDecoderLocation = new URL("draco/", location.href).href;
+</script>
+<script type="module" src="vendor/model-viewer.min.js"></script>
+<style>
+  :root { --acento: #0a84ff; --texto: #1c2733; --tenue: #5d6b7c; --borde: #d7dde5; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #eef1f5; }
+  body { font: 14px/1.4 "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif; color: var(--texto); }
+  model-viewer { position: fixed; inset: 0; width: 100%; height: 100%; background: #eef1f5;
+                 --poster-color: transparent; --progress-bar-color: transparent; }
+
+  .flotante { position: fixed; z-index: 3; background: rgba(255,255,255,.92); border: 1px solid var(--borde);
+              border-radius: 12px; box-shadow: 0 6px 22px rgba(16,24,40,.12); }
+  #cabecera { left: 12px; top: 12px; padding: 6px 10px; max-width: calc(100vw - 190px); }
+  .marca { font-weight: 700; letter-spacing: .14em; font-size: 12px; color: #0b1220; }
+  .marca span { color: var(--acento); }
+  #titulo { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  #volver { right: 12px; top: 12px; display: flex; align-items: center; gap: 6px; padding: 9px 13px;
+            font: inherit; font-weight: 600; color: var(--texto); text-decoration: none; cursor: pointer; }
+  #volver svg, .btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.9;
+                          stroke-linecap: round; stroke-linejoin: round; }
+
+  #panel { left: 50%; bottom: 14px; transform: translateX(-50%); width: min(calc(100vw - 20px), 440px); padding: 14px; }
+  #panel h2 { margin: 0 0 8px; font-size: 15px; }
+  .pasos { margin: 0 0 12px; padding-left: 20px; color: var(--tenue); font-size: 13px; }
+  .pasos li { margin: 2px 0; }
+  .pasos b { color: var(--texto); }
+  .opciones { display: flex; gap: 6px; margin: 0 0 12px; align-items: center; flex-wrap: wrap; }
+  .opciones .etq { font-size: 12.5px; color: var(--tenue); margin-right: 2px; }
+  .seg { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--borde); background: #fff; font: inherit;
+         font-size: 13px; color: var(--texto); cursor: pointer; }
+  .seg.activo { background: var(--acento); border-color: var(--acento); color: #fff; }
+  .btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 14px;
+         border-radius: 12px; border: 0; background: var(--acento); color: #fff; font: inherit; font-size: 15px;
+         font-weight: 600; cursor: pointer; }
+  .btn:disabled { opacity: .55; cursor: default; }
+  #estado { margin: 10px 0 0; font-size: 12.5px; color: var(--tenue); text-align: center; min-height: 1em; }
+  #estado.error { color: #a12020; }
+
+  #qr-caja { display: flex; gap: 14px; align-items: center; }
+  #qr { flex: 0 0 auto; width: 132px; height: 132px; background: #fff; border-radius: 8px; padding: 6px; border: 1px solid var(--borde); }
+  #qr img, #qr svg { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+  #qr-caja p { margin: 0; color: var(--tenue); font-size: 13px; }
+  #qr-caja p b { color: var(--texto); }
+
+  #carga { position: fixed; z-index: 2; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(70vw, 300px);
+           text-align: center; color: var(--tenue); font-size: 13px; }
+  .progreso { height: 5px; background: #dfe5ec; border-radius: 3px; overflow: hidden; margin-top: 8px; }
+  #carga-barra { height: 100%; width: 0; background: var(--acento); transition: width .2s; }
+
+  @media (max-height: 560px) { .pasos { display: none; } }
+</style>
+</head>
+<body>
+
+<div id="cabecera" class="flotante"><div class="marca">BIM <span>LOADING</span></div><div id="titulo">Realidad aumentada</div></div>
+<a id="volver" class="flotante" href="./" title="Regresar al visor con herramientas">
+  <svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>Volver al visor
+</a>
+
+<model-viewer id="mv" ar ar-modes="webxr scene-viewer quick-look" ar-placement="floor" ar-scale="auto"
+              camera-controls touch-action="pan-y" shadow-intensity="1" environment-image="neutral"
+              interaction-prompt="none" loading="eager" alt="Modelo 3D de BIM Loading">
+  <!-- Botón propio: se oculta el que trae model-viewer -->
+  <button slot="ar-button" hidden></button>
+</model-viewer>
+
+<div id="carga"><div id="carga-texto">Cargando modelo…</div><div class="progreso"><div id="carga-barra"></div></div></div>
+
+<section id="panel" class="flotante" aria-label="Realidad aumentada">
+  <div id="modo-ra">
+    <h2>Ver el modelo en tu espacio</h2>
+    <ol class="pasos">
+      <li>Toca <b>Iniciar realidad aumentada</b> y permite el uso de la cámara.</li>
+      <li>Apunta al <b>piso</b> (o a la pared) y mueve el teléfono despacio hasta que reconozca la superficie.</li>
+      <li>El modelo se coloca solo. <b>Arrastra</b> para moverlo, <b>gira con dos dedos</b> y <b>pellizca</b> para cambiar su tamaño.</li>
+    </ol>
+    <div class="opciones" role="group" aria-label="Superficie">
+      <span class="etq">Superficie:</span>
+      <button type="button" class="seg activo" data-sup="floor">Piso o mesa</button>
+      <button type="button" class="seg" data-sup="wall">Pared</button>
+    </div>
+    <button id="iniciar" class="btn" type="button" disabled>
+      <svg viewBox="0 0 24 24"><path d="M12 2l8 4.5v9L12 20l-8-4.5v-9z"/><path d="M4 6.5l8 4.5 8-4.5M12 11v9"/></svg>
+      Iniciar realidad aumentada
+    </button>
+  </div>
+  <div id="modo-qr" hidden>
+    <h2>Abre esta página en tu celular</h2>
+    <div id="qr-caja">
+      <div id="qr" aria-label="Código QR de esta página"></div>
+      <p>Esta computadora no tiene cámara para realidad aumentada. <b>Escanea el código</b> con la cámara de tu iPhone o Android y toca <b>Iniciar realidad aumentada</b>.</p>
+    </div>
+  </div>
+  <p id="estado" role="status"></p>
+</section>
+
+<script src="vendor/qrcode.js" defer></script>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const parametros = new URLSearchParams(location.search);
+  const modelo = parametros.get("m") || "";
+  const titulo = parametros.get("t") || "";
+  const mv = $("mv");
+
+  // Regresar al visor con el mismo modelo.
+  $("volver").href = "./" + location.search;
+  if (titulo) { $("titulo").textContent = titulo; document.title = titulo + " · Realidad aumentada · BIM Loading"; }
+
+  const estado = (texto, error) => { $("estado").textContent = texto || ""; $("estado").classList.toggle("error", !!error); };
+
+  // Solo modelos de este mismo sitio (misma regla que el visor).
+  if (!modelo || /^[a-z][a-z0-9+.-]*:/i.test(modelo) || modelo.startsWith("//")) {
+    $("carga").hidden = true;
+    estado(modelo ? "La dirección del modelo no es válida." : "Falta indicar el modelo (?m=archivo.glb).", true);
+    return;
+  }
+
+  // Superficie: piso/mesa o pared.
+  for (const b of document.querySelectorAll("[data-sup]")) {
+    b.addEventListener("click", () => {
+      mv.setAttribute("ar-placement", b.dataset.sup);
+      for (const o of document.querySelectorAll("[data-sup]")) o.classList.toggle("activo", o === b);
+    });
+  }
+
+  customElements.whenDefined("model-viewer").then(() => {
+    mv.src = new URL(modelo, location.href).href;
+  }).catch(() => estado("No se pudo cargar el visor de realidad aumentada. Revisa tu conexión.", true));
+
+  mv.addEventListener("progress", (e) => {
+    const p = e.detail && e.detail.totalProgress || 0;
+    $("carga-barra").style.width = Math.round(p * 100) + "%";
+    $("carga-texto").textContent = "Cargando modelo… " + Math.round(p * 100) + " %";
+  });
+
+  mv.addEventListener("load", () => {
+    $("carga").hidden = true;
+    if (mv.canActivateAR) {
+      $("iniciar").disabled = false;
+      estado("");
+    } else {
+      mostrarQR();
+    }
+  });
+
+  mv.addEventListener("error", () => {
+    $("carga").hidden = true;
+    estado("No se pudo cargar el modelo.", true);
+  });
+
+  $("iniciar").addEventListener("click", () => {
+    estado("Abriendo la cámara… En iPhone, preparar un modelo grande puede tardar unos segundos.");
+    try { mv.activateAR(); } catch (e) { estado("No se pudo iniciar la realidad aumentada en este dispositivo.", true); }
+  });
+
+  mv.addEventListener("ar-status", (e) => {
+    const s = e.detail && e.detail.status;
+    if (s === "session-started") estado("Mueve el teléfono despacio apuntando a la superficie…");
+    else if (s === "object-placed") estado("Modelo colocado. Arrastra, gira o pellizca para ajustarlo.");
+    else if (s === "not-presenting") estado("Puedes iniciar de nuevo o volver al visor.");
+    else if (s === "failed") estado("Tu dispositivo no pudo iniciar la realidad aumentada. Prueba con Chrome en Android o Safari en iPhone.", true);
+  });
+
+  mv.addEventListener("ar-tracking", (e) => {
+    if (e.detail && e.detail.status === "not-tracking") estado("Se perdió la superficie: apunta de nuevo al piso con buena luz.");
+  });
+
+  function mostrarQR() {
+    $("modo-ra").hidden = true;
+    $("modo-qr").hidden = false;
+    const local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+    if (local) {
+      $("qr").hidden = true;
+      $("qr-caja").querySelector("p").innerHTML = "La realidad aumentada se usa desde el celular. <b>Publica el modelo en la web</b> y ábrelo desde tu teléfono.";
+      return;
+    }
+    const pintar = () => {
+      if (!window.qrcode) return setTimeout(pintar, 200);
+      const q = window.qrcode(0, "M");
+      q.addData(location.href);
+      q.make();
+      $("qr").innerHTML = q.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
+    };
+    pintar();
+  }
+})();
+</script>
+</body>
+</html>
