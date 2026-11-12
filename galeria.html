@@ -13,7 +13,7 @@
          font: 14px/1.45 "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif; }
   header { position: sticky; top: 0; z-index: 2; background: rgba(255,255,255,.92); backdrop-filter: blur(8px);
            border-bottom: 1px solid var(--borde); }
-  .cont { max-width: 1180px; margin: 0 auto; padding: 0 18px; }
+  .cont { max-width: 1680px; margin: 0 auto; padding: 0 clamp(12px, 2.5vw, 32px); }
   .cab { display: flex; align-items: center; gap: 14px; height: 60px; }
   .marca { font-weight: 700; letter-spacing: .14em; font-size: 14px; color: #0b1220; white-space: nowrap; }
   .marca span { color: var(--acento); }
@@ -25,10 +25,15 @@
   main { padding: 26px 0 50px; }
   h1 { font-size: 24px; margin: 0 0 4px; }
   .intro { color: var(--tenue); margin: 0 0 22px; }
-  .proyecto { margin: 26px 0 12px; display: flex; align-items: baseline; gap: 10px; }
-  .proyecto h2 { font-size: 16px; margin: 0; }
-  .proyecto small { color: var(--tenue); }
-  .rejilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .rejilla { display: grid; gap: clamp(10px, 1.4vw, 18px);
+             grid-template-columns: repeat(auto-fill, minmax(min(100%, 285px), 1fr)); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
+  .chip { padding: 6px 13px; border-radius: 999px; border: 1px solid var(--borde); background: #fff;
+          font: inherit; font-size: 13px; color: var(--texto); cursor: pointer; }
+  .chip small { color: var(--tenue); margin-left: 4px; }
+  .chip.activo { background: var(--acento); border-color: var(--acento); color: #fff; }
+  .chip.activo small { color: rgba(255,255,255,.8); }
+  .meta .proy { color: var(--acento); font-weight: 600; }
   .tarjeta { background: #fff; border: 1px solid var(--borde); border-radius: 14px; overflow: hidden;
              display: flex; flex-direction: column; box-shadow: 0 2px 8px rgba(16,24,40,.05);
              transition: box-shadow .15s, transform .15s; }
@@ -45,9 +50,9 @@
   .cuerpo { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
   .nombre { font-weight: 600; word-break: break-word; }
   .meta { color: var(--tenue); font-size: 12px; }
-  .acciones { display: flex; gap: 6px; margin-top: auto; padding-top: 6px; }
+  .acciones { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 6px; }
   .acciones a, .acciones button { flex: 1; padding: 7px 6px; border-radius: 9px; font: inherit; font-size: 12.5px;
-               text-align: center; cursor: pointer; text-decoration: none; border: 1px solid var(--borde);
+               min-width: 0; text-align: center; cursor: pointer; text-decoration: none; border: 1px solid var(--borde);
                background: #fff; color: var(--texto); white-space: nowrap; }
   .acciones a.prim { background: var(--acento); border-color: var(--acento); color: #fff; font-weight: 600; }
   .acciones button:hover { background: #f1f4f8; }
@@ -77,6 +82,7 @@
 <main class="cont">
   <h1>Modelos 3D</h1>
   <p class="intro">Explora los modelos en el navegador, en PC o celular, sin instalar nada.</p>
+  <div id="chips" class="chips" hidden></div>
   <div id="estado" class="aviso">Cargando modelos…</div>
   <div id="lista"></div>
 </main>
@@ -107,10 +113,43 @@
     setTimeout(() => { btn.textContent = antes; btn.classList.remove("ok"); }, 1600);
   }
 
-  let modelos = [];
+  let modelos = [], proyectoSel = "";
+  function tarjeta(m) {
+    const url = urlVisor(m);
+    const t = document.createElement("article"); t.className = "tarjeta";
+    const imagen = m.miniatura ? '<img src="' + esc(m.miniatura) + '?v=' + encodeURIComponent(m.fecha || "") + '" alt="" loading="lazy">' : "";
+    t.innerHTML =
+      '<a class="portada" href="' + esc(url) + '" aria-label="Abrir ' + esc(m.nombre) + '">' + icono + imagen +
+      (m.tipo ? '<span class="tipo">' + esc(m.tipo) + '</span>' : "") + '<span class="ir">Ver 3D</span></a>' +
+      '<div class="cuerpo"><div class="nombre">' + esc(m.nombre) + '</div>' +
+      '<div class="meta"><span class="proy">' + esc(m.proyecto) + "</span> · " + tam(m.peso) + '</div>' +
+      '<div class="acciones"><a class="prim" href="' + esc(url) + '">Abrir</a>' +
+      '<button type="button" data-a="enlace">Copiar enlace</button>' +
+      '<button type="button" data-a="insert">Código Insert</button></div></div>';
+    const img = t.querySelector("img");
+    if (img) img.onerror = () => img.remove();
+    t.querySelector('[data-a="enlace"]').onclick = (e) => copiar(e.currentTarget, url);
+    t.querySelector('[data-a="insert"]').onclick = (e) => copiar(e.currentTarget, insert(m));
+    return t;
+  }
+  function pintarChips() {
+    const cuenta = new Map();
+    modelos.forEach((m) => cuenta.set(m.proyecto, (cuenta.get(m.proyecto) || 0) + 1));
+    const cont = $("chips"); cont.innerHTML = "";
+    cont.hidden = cuenta.size < 2;
+    const opciones = [["", "Todos", modelos.length], ...[...cuenta.keys()].sort((a, b) => a.localeCompare(b, "es")).map((p) => [p, p, cuenta.get(p)])];
+    opciones.forEach(([valor, texto, n]) => {
+      const c = document.createElement("button"); c.type = "button";
+      c.className = "chip" + (valor === proyectoSel ? " activo" : "");
+      c.innerHTML = esc(texto) + "<small>" + n + "</small>";
+      c.onclick = () => { proyectoSel = valor; pintarChips(); pintar($("buscar").value); };
+      cont.appendChild(c);
+    });
+  }
   function pintar(filtro) {
     const f = (filtro || "").toLowerCase().trim();
-    const vis = modelos.filter((m) => !f || (m.proyecto + " " + m.nombre).toLowerCase().includes(f));
+    const vis = modelos.filter((m) => (!proyectoSel || m.proyecto === proyectoSel) &&
+                                      (!f || (m.proyecto + " " + m.nombre).toLowerCase().includes(f)));
     const lista = $("lista"); lista.innerHTML = "";
     if (!vis.length) {
       $("estado").hidden = false; $("estado").className = "aviso";
@@ -118,33 +157,11 @@
       return;
     }
     $("estado").hidden = true;
-    const grupos = new Map();
-    vis.forEach((m) => { if (!grupos.has(m.proyecto)) grupos.set(m.proyecto, []); grupos.get(m.proyecto).push(m); });
-    [...grupos.keys()].sort((a, b) => a.localeCompare(b, "es")).forEach((p) => {
-      const ms = grupos.get(p);
-      const h = document.createElement("div"); h.className = "proyecto";
-      h.innerHTML = "<h2>" + esc(p) + "</h2><small>" + ms.length + (ms.length === 1 ? " modelo" : " modelos") + "</small>";
-      const rej = document.createElement("div"); rej.className = "rejilla";
-      ms.sort((a, b) => a.nombre.localeCompare(b.nombre, "es")).forEach((m) => {
-        const url = urlVisor(m);
-        const t = document.createElement("article"); t.className = "tarjeta";
-        const imagen = m.miniatura ? '<img src="' + esc(m.miniatura) + '?v=' + encodeURIComponent(m.fecha || "") + '" alt="" loading="lazy">' : "";
-        t.innerHTML =
-          '<a class="portada" href="' + esc(url) + '" aria-label="Abrir ' + esc(m.nombre) + '">' + icono + imagen +
-          (m.tipo ? '<span class="tipo">' + esc(m.tipo) + '</span>' : "") + '<span class="ir">Ver 3D</span></a>' +
-          '<div class="cuerpo"><div class="nombre">' + esc(m.nombre) + '</div>' +
-          '<div class="meta">' + esc(m.proyecto) + " · " + tam(m.peso) + '</div>' +
-          '<div class="acciones"><a class="prim" href="' + esc(url) + '">Abrir</a>' +
-          '<button type="button" data-a="enlace">Copiar enlace</button>' +
-          '<button type="button" data-a="insert">Código Insert</button></div></div>';
-        const img = t.querySelector("img");
-        if (img) img.onerror = () => img.remove();
-        t.querySelector('[data-a="enlace"]').onclick = (e) => copiar(e.currentTarget, url);
-        t.querySelector('[data-a="insert"]').onclick = (e) => copiar(e.currentTarget, insert(m));
-        rej.appendChild(t);
-      });
-      lista.append(h, rej);
-    });
+    // Una sola rejilla: las tarjetas se acomodan de izquierda a derecha y bajan de fila según el ancho de la ventana.
+    const rej = document.createElement("div"); rej.className = "rejilla";
+    vis.sort((a, b) => a.proyecto.localeCompare(b.proyecto, "es") || a.nombre.localeCompare(b.nombre, "es"))
+       .forEach((m) => rej.appendChild(tarjeta(m)));
+    lista.appendChild(rej);
   }
 
   async function cargar() {
@@ -158,6 +175,7 @@
         nombre: String(m.nombre || ""), proyecto: proyectoBonito(m.proyecto), tipo: m.tipo || "",
         ruta: m.ruta, miniatura: rutaSegura(m.miniatura) ? m.miniatura : "", peso: Number(m.bytes) || 0, fecha: m.fecha || ""
       }));
+      pintarChips();
       pintar($("buscar").value);
     } catch (e) {
       $("estado").hidden = false; $("estado").className = "aviso error";
