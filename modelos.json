@@ -1,5 +1,5 @@
 {
- "actualizado": "2026-11-12T23:28:21.987Z",
+ "actualizado": "2026-11-12T23:29:41.263Z",
  "modelos": [
   {
    "nombre": "001-BLO-A-ARQ-VAR-V1",
@@ -19,9 +19,9 @@
    "ruta": "modelos/taller-mecanico--kof-su-sjdr-0665-cct-arq-m3d-arquitectura-a00.glb",
    "miniatura": "miniaturas/taller-mecanico--kof-su-sjdr-0665-cct-arq-m3d-arquitectura-a00.jpg",
    "usdz": "modelos/taller-mecanico--kof-su-sjdr-0665-cct-arq-m3d-arquitectura-a00.usdz",
-   "ra": "",
+   "ra": "modelos/taller-mecanico--kof-su-sjdr-0665-cct-arq-m3d-arquitectura-a00.ra.glb",
    "bytes": 18689728,
-   "fecha": "2026-11-12T23:02:44.779Z"
+   "fecha": "2026-11-12T23:29:41.262Z"
   }
  ]
 }
