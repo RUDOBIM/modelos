@@ -118,10 +118,15 @@ function ponerIosSrc(url) {
   const franja = "callToAction=" + encodeURIComponent("\u2699\uFE0E") +
     "&checkoutTitle=" + encodeURIComponent(k === 1 ? "Escala 1:1" : "Escala 1:" + k) +
     "&checkoutSubtitle=" + encodeURIComponent("Nivel 0 " + conSigno(ajuste.elev));
-  mv.setAttribute("ios-src", url.split("#")[0] + (franja ? "#" + franja : ""));
+  // Safari no muestra esta franja con archivos temporales (blob): ahí no se pide; al cerrar la RA
+  // la página ya tiene abierto el menú de ajustes.
+  const temporal = url.startsWith("blob:");
+  mv.setAttribute("ios-src", url.split("#")[0] + (temporal ? "" : "#" + franja));
 }
 function abrirQuickLook() {
   estado("");
+  // Queda abierto debajo de la RA: al cerrarla con la X, aparece el menú de escala y elevación.
+  $("ios-ajustes").hidden = false;
   try { mv.activateAR(); } catch (e) { estado("No se pudo iniciar la realidad aumentada en este dispositivo.", true); }
 }
 
@@ -195,6 +200,14 @@ async function usdzAjustado(k, elev) {
   if (!esc) throw new Error("sin grupo de escala");
   const f = String(1 / k);
   texto = texto.slice(0, esc.j) + "( (" + f + ", 0, 0, 0), (0, " + f + ", 0, 0), (0, 0, " + f + ", 0), (0, 0, 0, 1) )" + texto.slice(esc.fin);
+  // El archivo publicado viene en su estado inicial (±0.00): lo que está bajo el nivel 0 viene guardado
+  // aparte en "bim_bajo.usda". Se vuelve a poner en la escena, junto al punto de apoyo.
+  if (texto.indexOf('def Xform "BIM_Bajo"') < 0 && archivos["bim_bajo.usda"]) {
+    const capa = dec.decode(archivos["bim_bajo.usda"]);
+    const blq = capa.slice(capa.indexOf("def Xform"));
+    const iApo = texto.indexOf('def Xform "BIM_Apoyo"');
+    if (iApo >= 0) { const linea = texto.lastIndexOf("\n", iApo) + 1; texto = texto.slice(0, linea) + blq.trimEnd() + "\n\n" + texto.slice(linea); }
+  }
   // Piso: en coordenadas del modelo queda a yc = -elev·k bajo el nivel 0.
   const yc = -elev * k;
   const iBajo = texto.indexOf('def Xform "BIM_Bajo"');
@@ -235,15 +248,17 @@ async function usdzAjustado(k, elev) {
   return new Blob([fflate.zipSync(entrada, { level: 0 })], { type: "model/vnd.usdz+zip" });
 }
 async function rehacerIOS() {
-  const tarea = preparando = usdzAjustado(ajuste.k, ajuste.elev);
+  // 1:1 y ±0.00 es el estado en que se publica el archivo: se abre directo (así Apple muestra la franja).
+  const inicial = ajuste.k === 1 && ajuste.elev <= 0.0001;
+  const tarea = preparando = inicial ? Promise.resolve(null) : usdzAjustado(ajuste.k, ajuste.elev);
   $("ios-volver").disabled = true;
   $("ios-volver").textContent = "Preparando…";
   try {
     const blob = await tarea;
     if (tarea !== preparando) return;
-    if (blobActual) URL.revokeObjectURL(blobActual);
-    blobActual = URL.createObjectURL(blob);
-    ponerIosSrc(blobActual);
+    if (blobActual) { URL.revokeObjectURL(blobActual); blobActual = null; }
+    if (blob) blobActual = URL.createObjectURL(blob);
+    ponerIosSrc(blobActual || new URL(rutaUsdz, location.href).href);
     estado("");
   } catch (e) {
     if (tarea !== preparando) return;
