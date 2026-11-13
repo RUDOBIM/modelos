@@ -1,5 +1,5 @@
 {
- "actualizado": "2026-11-13T07:06:44.557Z",
+ "actualizado": "2026-11-13T07:20:58.797Z",
  "modelos": [
   {
    "nombre": "001-BLO-A-ARQ-VAR-V1",
@@ -11,6 +11,17 @@
    "ra": "modelos/casa-de-campo--001-blo-a-arq-var-v1.ra.glb",
    "bytes": 7967128,
    "fecha": "2026-11-13T07:05:31.686Z"
+  },
+  {
+   "nombre": "001-BLO-A-ARQ-VAR-V1_WEB_comprimido",
+   "proyecto": "CASA DE CAMPO",
+   "tipo": "Web comprimido",
+   "ruta": "modelos/casa-de-campo--001-blo-a-arq-var-v1_web_comprimido.glb",
+   "miniatura": "miniaturas/casa-de-campo--001-blo-a-arq-var-v1_web_comprimido.jpg",
+   "usdz": "modelos/casa-de-campo--001-blo-a-arq-var-v1_web_comprimido.usdz",
+   "ra": "modelos/casa-de-campo--001-blo-a-arq-var-v1_web_comprimido.ra.glb",
+   "bytes": 7591532,
+   "fecha": "2026-11-13T07:20:58.785Z"
   },
   {
    "nombre": "KOF-SU-SJDR-0665-CCT-ARQ-M3D-Arquitectura-A00",
