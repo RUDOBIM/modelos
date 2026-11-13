@@ -39,17 +39,32 @@ Promise.all([customElements.whenDefined("model-viewer"), hayRa]).then(([, ra]) =
 // ---------------------------------------------------------------- Ajustes (escala y elevación)
 const m2 = (v) => v.toFixed(2) + " m";
 const conSigno = (v) => Math.abs(v) < 0.005 ? "±0.00 m" : (v > 0 ? "+" : "−") + Math.abs(v).toFixed(2) + " m";
-const ajuste = { k: 1, elev: 0, libre: false };
+// En escala real el modelo inicia a +0.10 m de la superficie.
+const ELEV_REAL = 0.10;
+const ajuste = { k: 1, elev: ELEV_REAL, libre: false };
 let dims = null;
 let fondo = 0; // y del punto más bajo respecto al nivel 0 (negativo si hay terreno o sótanos), en m reales
 const textoEscala = (k) => "1:" + (k >= 10 ? Math.round(k) : +k.toFixed(1));
 let alAjustar = () => {};
 
+// Elevación libre por debajo y por encima de la superficie (en iPhone, solo hacia arriba).
+function rangoElev() {
+  const alto = dims ? dims.y / ajuste.k : 3;
+  const max = +Math.max(2, alto * 1.5).toFixed(2);
+  return [esApple ? 0 : -max, max];
+}
 function pintarAjustes() {
-  if (ajuste.elev < 0) ajuste.elev = 0;
+  const [min, max] = rangoElev();
+  ajuste.elev = Math.min(max, Math.max(min, ajuste.elev));
   $("escala").value = ajuste.libre ? "libre" : String(ajuste.k);
   $("elev-valor").textContent = conSigno(ajuste.elev);
-  $("elev-menos").disabled = ajuste.elev <= 0.0001;
+  const barra = $("elev-barra");
+  barra.min = min.toFixed(2); barra.max = max.toFixed(2); barra.value = ajuste.elev.toFixed(2);
+  $("elev-menos").disabled = ajuste.elev <= min + 0.0001;
+  $("elev-mas").disabled = ajuste.elev >= max - 0.0001;
+  const nota = $("nota-elev");
+  nota.hidden = !esApple;
+  nota.textContent = "En iPhone el modelo no puede bajar del piso: la RA de Apple siempre apoya su punto más bajo en la superficie.";
   if (dims) {
     const k = ajuste.k;
     const esc = ajuste.libre ? "libre (" + textoEscala(k) + ")" : (k === 1 ? "real" : textoEscala(k));
@@ -66,12 +81,16 @@ const cambiar = () => { pintarAjustes(); alAjustar(); };
 $("escala").addEventListener("change", () => {
   const v = $("escala").value;
   ajuste.libre = v === "libre";
-  if (!ajuste.libre) ajuste.k = Number(v);
+  if (!ajuste.libre) {
+    ajuste.k = Number(v);
+    if (ajuste.k === 1) ajuste.elev = ELEV_REAL;
+  }
   cambiar();
 });
-const paso = () => Number($("paso").value);
-$("elev-mas").addEventListener("click", () => { ajuste.elev = Math.round((ajuste.elev + paso()) * 100) / 100; cambiar(); });
-$("elev-menos").addEventListener("click", () => { ajuste.elev = Math.max(0, Math.round((ajuste.elev - paso()) * 100) / 100); cambiar(); });
+const redondear = (v) => Math.round(v * 100) / 100;
+$("elev-mas").addEventListener("click", () => { ajuste.elev = redondear(ajuste.elev + 0.01); cambiar(); });
+$("elev-menos").addEventListener("click", () => { ajuste.elev = redondear(ajuste.elev - 0.01); cambiar(); });
+$("elev-barra").addEventListener("input", () => { ajuste.elev = redondear(Number($("elev-barra").value)); cambiar(); });
 $("elev-cero").addEventListener("click", () => { ajuste.elev = 0; cambiar(); });
 
 // ---------------------------------------------------------------- Vista previa
@@ -113,11 +132,12 @@ $("iniciar").addEventListener("click", () => {
 // =================================================================== iPhone (AR Quick Look)
 // La barra de arriba de la RA es de Apple. Abajo solo se permite una franja: se usa la mínima, con un
 // ícono de ajustes. Al tocarla vuelve aquí, se ajusta y se regresa a la RA.
-let usdzBase = null, blobActual = null, preparando = null, apoyoBase = null, numAjuste = 0;
+let usdzBase = null, blobActual = null, preparando = null, numAjuste = 0;
 
 function prepararIOS() {
   $("grupo-xr").hidden = true;
   $("ios-lugar").appendChild($("ajustes"));
+  $("elev-cero").textContent = "Base en el piso";
   mv.setAttribute("ar-scale", "fixed");
   // Servicio que entrega el USDZ ajustado con una dirección normal del sitio (ver sw-ra.js).
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw-ra.js").catch(() => {});
@@ -191,8 +211,7 @@ async function usdzAjustado(k, elev) {
   const apo = matrizDe(texto, "BIM_Apoyo");
   if (apo) {
     const t = apo.valor.match(/\(([^()]*)\) \)$/)[1].split(",").map(Number);
-    if (apoyoBase === null) apoyoBase = Math.min(t[1], fondo);
-    const y = apoyoBase - elev * k;
+    const y = fondo - elev * k; // fondo: punto más bajo del modelo (coordenadas del modelo)
     texto = texto.slice(0, apo.j) + "( (1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (" + t[0] + ", " + y + ", " + t[2] + ", 1) )" + texto.slice(apo.fin);
   }
   archivos["model.usda"] = enc.encode(texto);
@@ -228,8 +247,8 @@ async function guardarAjuste(blob) {
   return blobActual;
 }
 async function rehacerIOS() {
-  // 1:1 y ±0.00 es el estado en que se publica el archivo: se abre directo (así Apple muestra la franja).
-  const inicial = ajuste.k === 1 && ajuste.elev <= 0.0001;
+  // 1:1 y +0.10 m es el estado en que se publica el archivo: se abre directo (así Apple muestra la franja).
+  const inicial = ajuste.k === 1 && Math.abs(ajuste.elev - ELEV_REAL) < 0.0001;
   const tarea = preparando = inicial ? Promise.resolve(null) : usdzAjustado(ajuste.k, ajuste.elev);
   $("ios-volver").disabled = true;
   $("ios-volver").textContent = "Preparando…";
