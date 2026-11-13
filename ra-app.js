@@ -47,8 +47,9 @@ const textoEscala = (k) => "1:" + (k >= 10 ? Math.round(k) : +k.toFixed(1));
 let alAjustar = () => {};
 
 // Elevación libre por debajo y por encima de la superficie (en iPhone, solo hacia arriba).
-// Barra de −4.00 a +4.00 m con 0 al centro. En iPhone la RA de Apple apoya el punto más bajo del
-// modelo (base del terreno) en la superficie: el nivel 0 no puede quedar más bajo que eso.
+// Barra de −4.00 a +4.00 m con 0 al centro; se puede subir y bajar libremente en los dos teléfonos.
+// minimoIOS: en iPhone, NPT con la base del modelo apoyada (debajo de eso, lo que queda bajo la
+// superficie no se dibuja, porque la RA de Apple no puede mostrar nada debajo del piso).
 const minimoIOS = () => (esApple ? -fondo / ajuste.k : -Infinity);
 function rangoElev() {
   const max = Math.max(4, Math.ceil(minimoIOS()));
@@ -70,17 +71,18 @@ function pintarMarcas(min, max) {
 }
 function pintarAjustes() {
   const [min, max] = rangoElev();
-  ajuste.elev = Math.min(max, Math.max(min, minimoIOS(), ajuste.elev));
+  ajuste.elev = Math.min(max, Math.max(min, ajuste.elev));
   $("escala").value = ajuste.libre ? "libre" : String(ajuste.k);
   $("elev-valor").textContent = "NPT " + conSigno(ajuste.elev);
   const barra = $("elev-barra");
   barra.min = String(min); barra.max = String(max); barra.value = ajuste.elev.toFixed(2);
   pintarMarcas(min, max);
-  $("elev-menos").disabled = ajuste.elev <= Math.max(min, minimoIOS()) + 0.0001;
+  $("elev-menos").disabled = ajuste.elev <= min + 0.0001;
   $("elev-mas").disabled = ajuste.elev >= max - 0.0001;
   const nota = $("nota-elev");
-  nota.hidden = !(esApple && fondo < -0.005);
-  nota.textContent = "En iPhone la RA de Apple apoya en la superficie el punto más bajo del modelo (base del terreno): a esta escala el nivel 0 queda como mínimo en NPT " + conSigno(minimoIOS()) + ".";
+  const bajo = esApple && ajuste.elev < minimoIOS() - 0.0001;
+  nota.hidden = !bajo;
+  nota.textContent = "Debajo de NPT " + conSigno(minimoIOS()) + " parte del modelo queda bajo la superficie; en iPhone esa parte no se dibuja mientras esté bajo el piso (la RA de Apple no puede mostrar nada debajo del piso).";
   if (dims) {
     const k = ajuste.k;
     const esc = ajuste.libre ? "libre (" + textoEscala(k) + ")" : (k === 1 ? "real" : textoEscala(k));
@@ -95,9 +97,9 @@ $("escala").addEventListener("change", () => {
   ajuste.libre = v === "libre";
   if (!ajuste.libre) {
     // En iPhone, si estaba en su mínimo (base apoyada), sigue en el mínimo de la nueva escala.
-    const enMinimo = esApple && ajuste.elev <= minimoIOS() + 0.0001;
+    const enMinimo = esApple && Math.abs(ajuste.elev - minimoIOS()) < 0.0001;
     ajuste.k = Number(v);
-    if (enMinimo) ajuste.elev = 0;
+    if (enMinimo) ajuste.elev = minimoIOS();
   }
   cambiar();
 });
@@ -156,6 +158,9 @@ function prepararIOS() {
   $("grupo-xr").hidden = true;
   $("ios-lugar").appendChild($("ajustes"));
   $("elev-cero").textContent = "NPT ±0.00";
+  // Inicia con el modelo completo: la base apoyada en la superficie.
+  ajuste.elev = minimoIOS();
+  pintarAjustes();
   mv.setAttribute("ar-scale", "fixed");
   // Servicio que entrega el USDZ ajustado con una dirección normal del sitio (ver sw-ra.js).
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw-ra.js").catch(() => {});
@@ -205,6 +210,47 @@ function matrizDe(texto, nombre) {
   const fin = texto.indexOf(" )", j) + 2;
   return { j, fin, valor: texto.slice(j, fin) };
 }
+const leerArreglo = (t, nombre) => {
+  const i = t.indexOf(nombre + " = [");
+  if (i < 0) return null;
+  const a = i + nombre.length + 4, b = t.indexOf("]", a);
+  return { a, b, texto: t.slice(a, b) };
+};
+const numeros = (s) => s.length ? s.replace(/[()]/g, "").split(",").map(Number) : [];
+const tuplas = (arr, n) => { let s = ""; for (let i = 0; i < arr.length; i += n) s += (i ? ", " : "") + "(" + arr.slice(i, i + n).map((x) => +x.toFixed(5)).join(", ") + ")"; return s; };
+// Corta una malla del USDZ (triángulos, atributos por vértice) con el plano y = yc; conserva lo de arriba.
+function cortarMallaUsda(t, yc) {
+  const P = leerArreglo(t, "point3f[] points"), I = leerArreglo(t, "int[] faceVertexIndices");
+  const N = leerArreglo(t, "normal3f[] normals"), S = leerArreglo(t, "texCoord2f[] primvars:st");
+  if (!P || !I) return { texto: t, vacio: false };
+  const pts = numeros(P.texto), idx = numeros(I.texto), nor = N ? numeros(N.texto) : null, st = S ? numeros(S.texto) : null;
+  const sp = [], sn = [], ss = [], si = [];
+  const ver = (v) => ({ p: pts.slice(v * 3, v * 3 + 3), n: nor ? nor.slice(v * 3, v * 3 + 3) : null, s: st ? st.slice(v * 2, v * 2 + 2) : null });
+  const mez = (a, b, f) => ({ p: a.p.map((x, c) => x + (b.p[c] - x) * f), n: a.n && a.n.map((x, c) => x + (b.n[c] - x) * f), s: a.s && a.s.map((x, c) => x + (b.s[c] - x) * f) });
+  const poner = (v) => { si.push(sp.length / 3); sp.push(...v.p); if (nor) sn.push(...v.n); if (st) ss.push(...v.s); };
+  for (let i = 0; i + 2 < idx.length; i += 3) {
+    const tri = [ver(idx[i]), ver(idx[i + 1]), ver(idx[i + 2])];
+    const d = tri.map((v) => v.p[1] - yc);
+    if (d.every((x) => x <= 0)) continue;
+    const poli = [];
+    for (let j = 0; j < 3; j++) {
+      const a = tri[j], b = tri[(j + 1) % 3], da = d[j], db = d[(j + 1) % 3];
+      if (da >= 0) poli.push(a);
+      if ((da > 0 && db < 0) || (da < 0 && db > 0)) poli.push(mez(a, b, da / (da - db)));
+    }
+    for (let j = 1; j + 1 < poli.length; j++) { poner(poli[0]); poner(poli[j]); poner(poli[j + 1]); }
+  }
+  if (!si.length) return { texto: t, vacio: true };
+  const cambios = [[P, tuplas(sp, 3)], [I, si.join(", ")]];
+  if (N) cambios.push([N, tuplas(sn, 3)]);
+  if (S) cambios.push([S, tuplas(ss, 2)]);
+  const C = leerArreglo(t, "int[] faceVertexCounts");
+  if (C) cambios.push([C, new Array(si.length / 3).fill(3).join(", ")]);
+  cambios.sort((x, y) => y[0].a - x[0].a);
+  let r = t;
+  for (const [z, v] of cambios) r = r.slice(0, z.a) + v + r.slice(z.b);
+  return { texto: r, vacio: false };
+}
 async function usdzAjustado(k, elev) {
   const fflate = await import("./vendor/fflate.module.js");
   if (!usdzBase) usdzBase = new Uint8Array(await (await fetch(rutaUsdz)).arrayBuffer());
@@ -224,13 +270,33 @@ async function usdzAjustado(k, elev) {
     const iApo = texto.indexOf('def Xform "BIM_Apoyo"');
     if (iApo >= 0) { const linea = texto.lastIndexOf("\n", iApo) + 1; texto = texto.slice(0, linea) + blq.trimEnd() + "\n\n" + texto.slice(linea); }
   }
-  // Elevación: el punto de apoyo (1 mm) es el punto más bajo del archivo, el que Apple pone sobre la
-  // superficie. Se baja elev·k (en coordenadas del modelo) bajo la base para subir el modelo completo.
+  // Por debajo del mínimo: la superficie corta el modelo en y = −elev·k (coordenadas del modelo).
+  // Solo en esta vista de iPhone; el archivo publicado no se toca.
+  const yc = -elev * k;
+  if (yc > fondo + 1e-6) {
+    const m = texto.match(/^# BIM_ALTURAS (.*)$/m);
+    const alturas = m ? JSON.parse(m[1]) : null;
+    const refs = [...texto.matchAll(/def Xform "[^"]+" \(\s*prepend references = @\.\/geometries\/(Geometry_\d+)\.usda@/g)];
+    for (const r of refs.reverse()) {
+      const nombre = r[1], archivo = "geometries/" + nombre + ".usda";
+      const h = alturas && alturas[nombre];
+      if (h && h[0] >= yc) continue;          // toda arriba de la superficie
+      if (h && h[1] <= yc) {                  // toda bajo la superficie
+        const [a, b] = bloque(texto, r.index); texto = texto.slice(0, a) + texto.slice(b); continue;
+      }
+      if (!archivos[archivo]) continue;
+      const res = cortarMallaUsda(dec.decode(archivos[archivo]), yc);
+      if (res.vacio) { const [a, b] = bloque(texto, r.index); texto = texto.slice(0, a) + texto.slice(b); }
+      else archivos[archivo] = enc.encode(res.texto);
+    }
+  }
+  // Elevación: el punto de apoyo (1 mm) es el punto más bajo del archivo, el que Apple pone sobre la superficie.
   const apo = matrizDe(texto, "BIM_Apoyo");
   if (apo) {
     const t = apo.valor.match(/\(([^()]*)\) \)$/)[1].split(",").map(Number);
-    // Nivel 0 a "elev" sobre la superficie: el punto de apoyo queda a −elev·k (nunca arriba de la base).
-    const y = Math.min(fondo, -elev * k);
+    // El punto de apoyo queda justo en la superficie (y = −elev·k): debajo de la base sube el modelo;
+    // arriba de la base coincide con el corte de la vista.
+    const y = yc;
     texto = texto.slice(0, apo.j) + "( (1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (" + t[0] + ", " + y + ", " + t[2] + ", 1) )" + texto.slice(apo.fin);
   }
   archivos["model.usda"] = enc.encode(texto);
@@ -268,7 +334,7 @@ async function guardarAjuste(blob) {
 async function rehacerIOS() {
   // Escala real con la base apoyada es el estado en que se publica el archivo: se abre directo
   // (así Apple muestra la franja).
-  const inicial = ajuste.k === 1 && ajuste.elev <= minimoIOS() + 0.0001;
+  const inicial = ajuste.k === 1 && Math.abs(ajuste.elev - minimoIOS()) < 0.0001;
   const tarea = preparando = inicial ? Promise.resolve(null) : usdzAjustado(ajuste.k, ajuste.elev);
   $("ios-volver").disabled = true;
   $("ios-volver").textContent = "Preparando…";
