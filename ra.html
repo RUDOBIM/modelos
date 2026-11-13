@@ -71,18 +71,24 @@
                 padding: 8px 6px; border-radius: 10px; background: #f2f5f9; }
   #medida { margin: 0; font-size: 12px; color: var(--tenue); }
   #medida b { color: var(--texto); }
-  #nota-ios { margin: 0; font-size: 12px; color: #8a5a00; }
 
-  /* Capa que se muestra encima de la cámara (WebXR dom-overlay, Android). */
+  /* Capa encima de la cámara (WebXR dom-overlay, Android): barra de íconos arriba, sin texto. */
   #ra-ui { position: fixed; inset: 0; z-index: 10; pointer-events: none; font: 14px/1.4 "Segoe UI", system-ui, Roboto, Arial, sans-serif; color: var(--texto); }
-  #ra-ui .caja { pointer-events: auto; background: rgba(255,255,255,.94); border-radius: 14px; box-shadow: 0 6px 22px rgba(0,0,0,.25); }
-  #ra-arriba { position: absolute; left: 10px; right: 10px; top: 10px; display: flex; gap: 8px; align-items: center; padding: 8px 8px 8px 12px; }
-  #ra-aviso { flex: 1; font-size: 13px; font-weight: 600; }
-  #ra-abajo { position: absolute; left: 10px; right: 10px; bottom: 12px; padding: 12px; max-width: 460px; margin: 0 auto; }
-  #ra-abajo .cab { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-  #ra-abajo .cab b { font-size: 14px; }
-  #ra-abajo.plegado #ajustes { display: none; }
-  #ra-abajo.plegado .cab { margin-bottom: 0; }
+  #ra-ui .caja { pointer-events: auto; background: rgba(255,255,255,.95); border-radius: 14px; box-shadow: 0 6px 22px rgba(0,0,0,.25); }
+  .redondo { pointer-events: auto; width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(40,40,40,.55);
+             color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+  .redondo svg, .segm svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+  #ra-salir { position: absolute; left: 14px; top: 14px; }
+  .segm { pointer-events: auto; position: absolute; left: 50%; top: 14px; transform: translateX(-50%); display: flex; gap: 2px;
+          padding: 3px; border-radius: 999px; background: rgba(40,40,40,.55); }
+  .segm button { width: 52px; height: 38px; border: 0; border-radius: 999px; background: transparent; color: #fff;
+                 display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+  .segm button.activo { background: rgba(255,255,255,.92); color: #1c2733; }
+  #ra-aviso { position: absolute; left: 50%; top: 66px; transform: translateX(-50%); max-width: calc(100vw - 28px); padding: 6px 12px;
+              border-radius: 999px; background: rgba(40,40,40,.6); color: #fff; font-size: 12.5px; text-align: center; white-space: nowrap;
+              overflow: hidden; text-overflow: ellipsis; transition: opacity .4s; }
+  #ra-aviso.oculto { opacity: 0; }
+  #ra-panel { position: absolute; left: 50%; top: 66px; transform: translateX(-50%); width: min(calc(100vw - 20px), 420px); padding: 12px; }
 
   /* iPhone: el mismo menú en la página, para volver a la vista de RA de Apple ya ajustado. */
   #ios-ajustes { position: fixed; inset: 0; z-index: 20; background: rgba(15,23,35,.45); display: flex; align-items: flex-end; justify-content: center; }
@@ -166,20 +172,20 @@
         <button type="button" class="ctl peq" id="recolocar">Recolocar</button>
       </span>
     </div>
-    <p id="nota-ios" hidden></p>
     <p id="medida"></p>
   </div>
 </div>
 
-<!-- Android: capa encima de la cámara durante la RA -->
+<!-- Android: capa encima de la cámara durante la RA (solo íconos) -->
 <div id="ra-ui" hidden>
-  <div id="ra-arriba" class="caja">
-    <span id="ra-aviso">Apunta al piso y mueve el teléfono despacio…</span>
-    <button type="button" class="ctl peq" id="ra-salir">Salir</button>
+  <button type="button" class="redondo" id="ra-salir" aria-label="Volver al visor" title="Volver al visor"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  <div class="segm" role="group" aria-label="Modo">
+    <button type="button" class="activo" id="ra-modo-ar" aria-label="Realidad aumentada" title="Realidad aumentada"><svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M12 7.5l4 2.2v4.6l-4 2.2-4-2.2V9.7z"/></svg></button>
+    <button type="button" id="ra-modo-obj" aria-label="Objeto" title="Objeto (vista 3D)"><svg viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg></button>
+    <button type="button" id="ra-ajustes" aria-label="Ajustes: escala y elevación" title="Ajustes: escala y elevación"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button>
   </div>
-  <div id="ra-abajo" class="caja">
-    <div class="cab"><b>Escala y elevación</b><button type="button" class="ctl peq" id="ra-plegar">Ocultar</button></div>
-  </div>
+  <div id="ra-aviso">Apunta al piso y mueve el teléfono despacio…</div>
+  <div id="ra-panel" class="caja" hidden></div>
 </div>
 
 <!-- iPhone: hoja de ajustes que abre el botón dentro de la vista de RA de Apple -->
@@ -193,387 +199,6 @@
 </div>
 
 <script src="vendor/qrcode.js" defer></script>
-<script type="module">
-const $ = (id) => document.getElementById(id);
-const parametros = new URLSearchParams(location.search);
-const modelo = parametros.get("m") || "";
-const titulo = parametros.get("t") || "";
-const mv = $("mv");
-const ajustarVista = () => { mv.style.bottom = ($("panel").offsetHeight + 24) + "px"; };
-new ResizeObserver(ajustarVista).observe($("panel"));
-window.addEventListener("resize", ajustarVista);
-$("volver").href = "./" + location.search;
-if (titulo) { $("titulo").textContent = titulo; document.title = titulo + " · Realidad aumentada · BIM Loading"; }
-const estado = (texto, error) => { $("estado").textContent = texto || ""; $("estado").classList.toggle("error", !!error); };
-
-if (!modelo || /^[a-z][a-z0-9+.-]*:/i.test(modelo) || modelo.startsWith("//")) {
-  $("carga").hidden = true;
-  estado(modelo ? "La dirección del modelo no es válida." : "Falta indicar el modelo (?m=archivo.glb).", true);
-  throw new Error("sin modelo");
-}
-
-const esApple = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-const rutaUsdz = modelo.replace(/\.glb$/i, ".usdz");
-const rutaRa = modelo.replace(/\.glb$/i, ".ra.glb");
-const existe = (r) => fetch(r, { method: "HEAD", cache: "no-store" }).then((x) => x.ok).catch(() => false);
-const hayUsdz = existe(rutaUsdz);
-const hayRa = existe(rutaRa);
-// Android con WebXR: visor de RA propio (menú dentro de la RA). Se revisa sin pedir permisos.
-const hayXR = !esApple && navigator.xr && navigator.xr.isSessionSupported
-  ? navigator.xr.isSessionSupported("immersive-ar").catch(() => false) : Promise.resolve(false);
-
-Promise.all([customElements.whenDefined("model-viewer"), hayRa]).then(([, ra]) => {
-  mv.src = new URL(ra ? rutaRa : modelo, location.href).href;
-}).catch(() => estado("No se pudo cargar el visor. Revisa tu conexión.", true));
-
-// ---------------------------------------------------------------- Estado de ajustes
-// Unidades: metros con 2 decimales. "Elevación" = altura del NIVEL 0 sobre la superficie detectada.
-const m2 = (v) => (Math.abs(v) < 0.005 ? 0 : v).toFixed(2) + " m";
-const conSigno = (v) => Math.abs(v) < 0.005 ? "0.00 m" : (v > 0 ? "+" : "−") + Math.abs(v).toFixed(2) + " m";
-const ajuste = { k: 1, elev: 0 };
-let dims = null;   // tamaño real (1:1) del modelo, en m
-let fondo = 0;     // y del punto más bajo respecto al nivel 0 (negativo si hay terreno o sótanos)
-let alAjustar = () => {};
-const minimoIOS = () => esApple ? -fondo / ajuste.k : -Infinity; // en iPhone el punto más bajo no puede bajar del piso
-
-function pintarAjustes() {
-  if (esApple && ajuste.elev < minimoIOS()) ajuste.elev = minimoIOS();
-  $("escala").value = String(ajuste.k);
-  $("elev-valor").textContent = conSigno(ajuste.elev);
-  if (esApple) {
-    $("elev-menos").disabled = ajuste.elev <= minimoIOS() + 1e-6;
-    $("elev-cero").textContent = "Apoyar en el punto más bajo";
-    const n = $("nota-ios");
-    n.hidden = fondo > -0.005;
-    n.textContent = "En iPhone el modelo no puede quedar bajo el piso: con el terreno completo, el nivel 0 queda como mínimo a " + m2(minimoIOS()) + ".";
-  }
-  if (dims) {
-    const k = ajuste.k;
-    $("medida").innerHTML = "Tamaño a escala " + (k === 1 ? "real" : "1:" + k) + ": <b>" + m2(dims.x / k) + " × " + m2(dims.z / k) +
-      "</b> de planta, <b>" + m2(dims.y / k) + "</b> de alto. Nivel 0 a <b>" + conSigno(ajuste.elev) + "</b> de la superficie.";
-  }
-}
-$("escala").addEventListener("change", () => {
-  // Si en iPhone estaba apoyado en su punto más bajo, sigue apoyado con la nueva escala.
-  const apoyado = esApple && ajuste.elev <= minimoIOS() + 1e-6;
-  ajuste.k = Number($("escala").value);
-  if (apoyado) ajuste.elev = minimoIOS();
-  pintarAjustes(); alAjustar();
-});
-const paso = () => Number($("paso").value);
-$("elev-mas").addEventListener("click", () => { ajuste.elev = Math.round((ajuste.elev + paso()) * 100) / 100; pintarAjustes(); alAjustar(); });
-$("elev-menos").addEventListener("click", () => { ajuste.elev = Math.round((ajuste.elev - paso()) * 100) / 100; pintarAjustes(); alAjustar(); });
-$("elev-cero").addEventListener("click", () => { ajuste.elev = esApple ? minimoIOS() : 0; pintarAjustes(); alAjustar(); });
-
-// ---------------------------------------------------------------- Carga de la vista previa
-mv.addEventListener("progress", (e) => {
-  const p = e.detail && e.detail.totalProgress || 0;
-  $("carga-barra").style.width = Math.round(p * 100) + "%";
-  $("carga-texto").textContent = "Cargando modelo… " + Math.round(p * 100) + " %";
-});
-mv.addEventListener("error", () => { $("carga").hidden = true; estado("No se pudo cargar el modelo.", true); });
-
-let modo = "";
-mv.addEventListener("load", async () => {
-  $("carga").hidden = true;
-  const d = mv.getDimensions(), c = mv.getBoundingBoxCenter();
-  dims = { x: d.x, y: d.y, z: d.z };
-  fondo = Math.min(0, c.y - d.y / 2);
-  if (esApple) {
-    if (!(await hayUsdz)) {
-      estado("Este modelo aún no tiene versión para iPhone. Vuelve a publicarlo desde el Hub de modelos y recarga esta página.", true);
-      return;
-    }
-    modo = "ios";
-    prepararIOS();
-  } else if (await hayXR) {
-    modo = "xr";
-    prepararXR();
-  } else if (mv.canActivateAR) {
-    modo = "sceneviewer";
-    estado("Este teléfono no permite el menú dentro de la RA; se abrirá el visor de Google a escala real.");
-  } else {
-    mostrarQR();
-    return;
-  }
-  ajuste.elev = esApple ? minimoIOS() : 0;
-  pintarAjustes();
-  if (modo === "ios") ponerIosSrc(new URL(rutaUsdz, location.href).href);
-  $("iniciar").disabled = false;
-});
-
-$("iniciar").addEventListener("click", () => {
-  if (modo === "xr") return iniciarXR();
-  if (modo === "ios") return abrirQuickLook();
-  if (modo === "sceneviewer") { try { mv.activateAR(); } catch (e) { estado("No se pudo iniciar la realidad aumentada.", true); } }
-});
-
-// =================================================================== iPhone (AR Quick Look)
-// La vista de RA de iPhone es de Apple y no admite menús propios; solo un botón (banner) abajo.
-// Ese botón abre aquí la hoja de escala y elevación y se regresa a la RA con el archivo ya ajustado.
-let usdzBase = null, blobActual = null, preparando = null, apoyoBase = null;
-const IDENTIDAD = "( (1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0, 0, 0, 1) )";
-
-function prepararIOS() {
-  $("grupo-xr").hidden = true;
-  $("ios-lugar").appendChild($("ajustes"));
-  mv.setAttribute("ar-scale", "fixed");
-  ponerIosSrc(new URL(rutaUsdz, location.href).href);
-  mv.addEventListener("quick-look-button-tapped", () => { $("ios-ajustes").hidden = false; $("ios-volver").disabled = !!preparando; });
-  $("ios-cerrar").addEventListener("click", () => { $("ios-ajustes").hidden = true; });
-  $("ios-volver").addEventListener("click", () => { $("ios-ajustes").hidden = true; abrirQuickLook(); });
-  let espera = null;
-  alAjustar = () => { clearTimeout(espera); $("ios-volver").disabled = true; espera = setTimeout(rehacerIOS, 250); };
-}
-function ponerIosSrc(url) {
-  const k = ajuste.k;
-  const sub = "Escala " + (k === 1 ? "real 1:1" : "1:" + k) + " · Nivel 0 a " + conSigno(ajuste.elev);
-  const h = "callToAction=" + encodeURIComponent("Escala y elevación") +
-            "&checkoutTitle=" + encodeURIComponent(titulo || "Modelo BIM Loading") +
-            "&checkoutSubtitle=" + encodeURIComponent(sub);
-  mv.setAttribute("ios-src", url.split("#")[0] + "#" + h);
-}
-function abrirQuickLook() {
-  estado("Abriendo la vista de realidad aumentada de iPhone… Toca «Escala y elevación» abajo para ajustar.");
-  try { mv.activateAR(); } catch (e) { estado("No se pudo iniciar la realidad aumentada en este dispositivo.", true); }
-}
-function reemplazarMatriz(texto, nombre, nueva) {
-  const i = texto.indexOf('def Xform "' + nombre + '"');
-  if (i < 0) return null;
-  const j = texto.indexOf("matrix4d xformOp:transform = ", i) + "matrix4d xformOp:transform = ".length;
-  const fin = texto.indexOf(" )", j) + 2;
-  return { actual: texto.slice(j, fin), texto: (m) => texto.slice(0, j) + m + texto.slice(fin) };
-}
-// Reescribe solo dos transformaciones del USDZ (sin volver a convertir el modelo):
-//  · "BIM_Escala": factor 1/k.   · "BIM_Apoyo": punto de 1 mm que marca dónde toca el piso.
-// Se reempaqueta sin compresión cuidando la alineación de 64 bytes que exige AR Quick Look.
-async function usdzAjustado(k, elev) {
-  const fflate = await import("./vendor/fflate.module.js");
-  if (!usdzBase) usdzBase = new Uint8Array(await (await fetch(rutaUsdz)).arrayBuffer());
-  const archivos = fflate.unzipSync(usdzBase);
-  let texto = new TextDecoder().decode(archivos["model.usda"]);
-  const esc = reemplazarMatriz(texto, "BIM_Escala");
-  if (!esc) throw new Error("sin grupo de escala");
-  const f = String(1 / k);
-  texto = esc.texto("( (" + f + ", 0, 0, 0), (0, " + f + ", 0, 0), (0, 0, " + f + ", 0), (0, 0, 0, 1) )");
-  const apo = reemplazarMatriz(texto, "BIM_Apoyo");
-  if (apo) {
-    const t = apo.actual.match(/\(([^()]*)\) \)$/)[1].split(",").map(Number);
-    if (!apoyoBase) apoyoBase = { x: t[0], y: t[1], z: t[2] };
-    // El punto más bajo del archivo es el que Apple apoya en el piso: se baja el punto de apoyo para subir el modelo.
-    const y = Math.min(apoyoBase.y, -elev * k);
-    texto = apo.texto("( (1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (" + apoyoBase.x + ", " + y + ", " + apoyoBase.z + ", 1) )");
-  }
-  archivos["model.usda"] = new TextEncoder().encode(texto);
-  const entrada = {};
-  let pos = 0;
-  for (const nombre of Object.keys(archivos)) {
-    const datos = archivos[nombre];
-    const base = pos + 30 + new TextEncoder().encode(nombre).length + 4;
-    const relleno = (64 - (base % 64)) % 64;
-    entrada[nombre] = [datos, { extra: { 12345: new Uint8Array(relleno) } }];
-    pos = base + relleno + datos.length;
-  }
-  return new Blob([fflate.zipSync(entrada, { level: 0 })], { type: "model/vnd.usdz+zip" });
-}
-async function rehacerIOS() {
-  const k = ajuste.k, elev = ajuste.elev;
-  const tarea = preparando = (k === 1 && elev <= minimoIOS() + 1e-6) ? Promise.resolve(null) : usdzAjustado(k, elev);
-  $("ios-volver").textContent = "Preparando…";
-  try {
-    const blob = await tarea;
-    if (tarea !== preparando) return;
-    if (blobActual) { URL.revokeObjectURL(blobActual); blobActual = null; }
-    if (blob) blobActual = URL.createObjectURL(blob);
-    ponerIosSrc(blobActual || new URL(rutaUsdz, location.href).href);
-  } catch (e) {
-    estado("No se pudo preparar ese ajuste; se usará la escala real.", true);
-    ponerIosSrc(new URL(rutaUsdz, location.href).href);
-  }
-  if (tarea === preparando) { preparando = null; $("ios-volver").disabled = false; $("ios-volver").textContent = "Volver a la realidad aumentada"; }
-}
-
-// =================================================================== Android (WebXR propio)
-// Detecta el piso, coloca el modelo con su nivel 0 sobre la superficie (sin recortar nada) y muestra
-// encima de la cámara el menú de escala y elevación, que se aplica al momento.
-let T = null, xr = null;
-function prepararXR() {
-  $("ra-abajo").appendChild($("ajustes"));
-  // Se precarga el motor 3D y el modelo para que la RA arranque al tocar el botón.
-  import("./vendor/three-ra.js").then(async (m) => {
-    T = m;
-    const draco = new T.DRACOLoader();
-    draco.setDecoderPath(new URL("draco/", location.href).href);
-    const cargador = new T.GLTFLoader();
-    cargador.setDRACOLoader(draco);
-    const gltf = await cargador.loadAsync(new URL((await hayRa) ? rutaRa : modelo, location.href).href);
-    xr = { escena3d: gltf.scene };
-    prepararModelo();
-  }).catch(() => { modo = mv.canActivateAR ? "sceneviewer" : modo; });
-  for (const id of ["ra-arriba", "ra-abajo"]) $(id).addEventListener("beforexrselect", (e) => e.preventDefault());
-  $("ra-salir").addEventListener("click", () => xr && xr.sesion && xr.sesion.end());
-  $("ra-plegar").addEventListener("click", () => {
-    const p = $("ra-abajo").classList.toggle("plegado");
-    $("ra-plegar").textContent = p ? "Mostrar" : "Ocultar";
-  });
-  $("girar-izq").addEventListener("click", () => girar(15));
-  $("girar-der").addEventListener("click", () => girar(-15));
-  $("recolocar").addEventListener("click", () => { if (xr) { xr.colocado = false; aviso("Apunta al piso y toca la pantalla para colocar el modelo."); } });
-  alAjustar = aplicarXR;
-}
-function prepararModelo() {
-  const escena = xr.escena3d;
-  // Nivel 0: dato que deja el Hub en la versión de RA; si no, los niveles del exportador o el punto más bajo.
-  let datos = null;
-  escena.traverse((o) => { if (!datos && o.userData && o.userData.blgRA) datos = o.userData.blgRA; });
-  let y0 = 0;
-  if (!datos) {
-    let niveles = null;
-    escena.traverse((o) => { if (!niveles && o.userData && o.userData.niveles) niveles = o.userData.niveles; });
-    if (niveles && niveles.length) y0 = niveles.slice().sort((a, b) => Math.abs(a.y) - Math.abs(b.y))[0].y;
-    else y0 = new T.Box3().setFromObject(escena).min.y;
-  }
-  const caja = new T.Box3().setFromObject(escena);
-  const modeloCentrado = new T.Group();
-  escena.position.set(-(caja.min.x + caja.max.x) / 2, -y0, -(caja.min.z + caja.max.z) / 2);
-  modeloCentrado.add(escena);
-  escena.traverse((o) => { if (o.isMesh) { o.castShadow = true; } });
-  xr.ancho = Math.max(caja.max.x - caja.min.x, caja.max.z - caja.min.z);
-  xr.alto = caja.max.y - caja.min.y;
-  dims = { x: caja.max.x - caja.min.x, y: caja.max.y - caja.min.y, z: caja.max.z - caja.min.z };
-  fondo = caja.min.y - y0;
-  xr.modelo = modeloCentrado;
-  pintarAjustes();
-}
-const aviso = (t) => { $("ra-aviso").textContent = t; };
-function girar(g) { if (xr && xr.anclaje) xr.giro += T.MathUtils.degToRad(g), xr.anclaje.rotation.y = xr.yaw + xr.giro; }
-function aplicarXR() {
-  if (!xr || !xr.escalado) return;
-  const s = 1 / ajuste.k;
-  xr.escalado.scale.setScalar(s);
-  xr.escalado.position.y = ajuste.elev;
-  // Sombra y luz a la medida del modelo en la escala actual.
-  const L = Math.max(0.3, (xr.ancho * s) * 1.6);
-  xr.sombra.scale.setScalar(L);
-  const cam = xr.luz.shadow.camera;
-  cam.left = cam.bottom = -L / 2; cam.right = cam.top = L / 2;
-  cam.near = 0.01; cam.far = L * 4 + xr.alto * s * 2;
-  xr.luz.position.set(L * 0.6, L * 1.5, L * 0.4);
-  cam.updateProjectionMatrix();
-}
-
-async function iniciarXR() {
-  if (!T) { estado("Preparando la realidad aumentada… vuelve a tocar en un momento."); return; }
-  let sesion;
-  try {
-    sesion = await navigator.xr.requestSession("immersive-ar", {
-      requiredFeatures: ["hit-test"],
-      optionalFeatures: ["dom-overlay", "light-estimation"],
-      domOverlay: { root: $("ra-ui") }
-    });
-  } catch (e) {
-    if (mv.canActivateAR) { modo = "sceneviewer"; estado("No se pudo abrir la RA con menú; se usará el visor de Google."); try { mv.activateAR(); } catch (_) {} }
-    else estado("Tu dispositivo no pudo iniciar la realidad aumentada.", true);
-    return;
-  }
-  xr = xr || {};
-  xr.sesion = sesion;
-  $("ra-ui").hidden = false;
-  aviso(xr.modelo ? "Apunta al piso y mueve el teléfono despacio…" : "Cargando el modelo…");
-  const renderer = new T.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(2, devicePixelRatio));
-  renderer.outputColorSpace = T.SRGBColorSpace;
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = T.PCFSoftShadowMap;
-  renderer.xr.enabled = true;
-  renderer.xr.setReferenceSpaceType("local");
-  await renderer.xr.setSession(sesion);
-  const escena = new T.Scene();
-  const camara = new T.PerspectiveCamera();
-  escena.add(new T.HemisphereLight(0xffffff, 0x8a8f99, 1.6));
-  const luz = new T.DirectionalLight(0xffffff, 1.8);
-  luz.castShadow = true;
-  luz.shadow.mapSize.set(2048, 2048);
-  luz.shadow.bias = -0.0005;
-  // Retícula sobre la superficie detectada.
-  const reticula = new T.Mesh(new T.RingGeometry(0.09, 0.12, 40).rotateX(-Math.PI / 2), new T.MeshBasicMaterial({ color: 0x0a84ff }));
-  reticula.matrixAutoUpdate = false;
-  reticula.visible = false;
-  escena.add(reticula);
-  // anclaje (posición en el piso y giro) → escalado (1/k y elevación del nivel 0) → modelo.
-  const anclaje = new T.Group();
-  const escalado = new T.Group();
-  anclaje.add(escalado);
-  const sombra = new T.Mesh(new T.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new T.ShadowMaterial({ opacity: 0.28 }));
-  sombra.receiveShadow = true;
-  anclaje.add(sombra, luz, luz.target);
-  anclaje.visible = false;
-  escena.add(anclaje);
-  Object.assign(xr, { renderer, escena, anclaje, escalado, sombra, luz, reticula, colocado: false, yaw: 0, giro: 0 });
-  const espacio = renderer.xr.getReferenceSpace();
-  const espacioVista = await sesion.requestReferenceSpace("viewer");
-  const fuente = await sesion.requestHitTestSource({ space: espacioVista });
-  const conModelo = () => { if (xr.modelo && !xr.modelo.parent) { escalado.add(xr.modelo); aplicarXR(); pintarAjustes(); aviso("Apunta al piso y toca la pantalla para colocar el modelo."); } };
-  const pos = new T.Vector3(), q = new T.Quaternion(), e = new T.Vector3();
-  sesion.addEventListener("select", () => {
-    if (!xr.modelo || !reticula.visible) return;
-    xr.colocado = true;
-    anclaje.visible = true;
-    aviso("Modelo colocado. Ajusta la escala y la elevación abajo.");
-  });
-  sesion.addEventListener("end", () => {
-    renderer.setAnimationLoop(null);
-    fuente.cancel && fuente.cancel();
-    if (xr.modelo) xr.modelo.removeFromParent();
-    renderer.dispose();
-    $("ra-ui").hidden = true;
-    xr.sesion = null;
-    estado("Puedes iniciar de nuevo o volver al visor.");
-  });
-  renderer.setAnimationLoop((t, frame) => {
-    conModelo();
-    if (frame && !xr.colocado) {
-      const r = frame.getHitTestResults(fuente);
-      if (r.length) {
-        const pose = r[0].getPose(espacio);
-        reticula.visible = true;
-        reticula.matrix.fromArray(pose.transform.matrix);
-        if (xr.modelo) {
-          // Vista previa: el modelo sigue a la retícula, de frente a la cámara, hasta que se toca la pantalla.
-          reticula.matrix.decompose(pos, q, e);
-          anclaje.position.copy(pos);
-          const c = renderer.xr.getCamera().position;
-          xr.yaw = Math.atan2(c.x - pos.x, c.z - pos.z);
-          anclaje.rotation.set(0, xr.yaw + xr.giro, 0);
-          anclaje.visible = true;
-        }
-      } else {
-        reticula.visible = false;
-        if (!xr.colocado) anclaje.visible = false;
-      }
-    } else reticula.visible = false;
-    renderer.render(escena, camara);
-  });
-}
-
-// =================================================================== Computadora
-function mostrarQR() {
-  $("modo-ra").hidden = true;
-  $("modo-qr").hidden = false;
-  if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
-    $("qr").hidden = true;
-    $("qr-caja").querySelector("p").innerHTML = "La realidad aumentada se usa desde el celular. <b>Publica el modelo en la web</b> y ábrelo desde tu teléfono.";
-    return;
-  }
-  const pintar = () => {
-    if (!window.qrcode) return setTimeout(pintar, 200);
-    const q = window.qrcode(0, "M");
-    q.addData(location.href);
-    q.make();
-    $("qr").innerHTML = q.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
-  };
-  pintar();
-}
-</script>
+<script type="module" src="ra-app.js"></script>
 </body>
 </html>
