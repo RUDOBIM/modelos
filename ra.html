@@ -62,7 +62,10 @@
   #ajustes select { flex: 1; min-width: 0; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--borde);
                     font: inherit; font-size: 14px; background: #fff; color: var(--texto); }
   .elev-cab { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
-  #elev-barra { flex: 1; min-width: 0; height: 30px; accent-color: #0a84ff; }
+  .barra-caja { flex: 1; min-width: 0; }
+  #elev-barra { width: 100%; height: 30px; margin: 0; accent-color: #0a84ff; }
+  #elev-marcas { position: relative; height: 15px; margin: 0 11px; font-size: 11px; font-weight: 600; color: var(--tenue); font-variant-numeric: tabular-nums; }
+  #elev-marcas span { position: absolute; top: 0; transform: translateX(-50%); }
   #nota-elev { margin: 4px 0 0; font-size: 12px; color: #8a5a00; }
   .ctl { min-width: 40px; height: 38px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--borde); background: #fff;
          font: inherit; font-size: 15px; font-weight: 700; color: var(--texto); cursor: pointer; display: inline-flex;
@@ -155,16 +158,19 @@
       </select>
     </div>
     <div class="elev">
-      <div class="elev-cab"><span class="etq">Elevación</span><span id="elev-valor" aria-live="polite">+0.10 m</span></div>
+      <div class="elev-cab"><span class="etq">Elevación</span><span id="elev-valor" aria-live="polite">NPT ±0.00 m</span></div>
       <div class="fila">
         <button type="button" class="ctl" id="elev-menos" aria-label="Bajar 1 cm">−</button>
-        <input type="range" id="elev-barra" min="-5" max="5" step="0.01" value="0.10" aria-label="Elevación en metros">
+        <div class="barra-caja">
+          <div id="elev-marcas" aria-hidden="true"></div>
+          <input type="range" id="elev-barra" min="-4" max="4" step="0.01" value="0" aria-label="Elevación NPT en metros">
+        </div>
         <button type="button" class="ctl" id="elev-mas" aria-label="Subir 1 cm">+</button>
       </div>
       <p id="nota-elev" hidden></p>
     </div>
     <div class="fila">
-      <button type="button" class="ctl peq" id="elev-cero">Nivel 0 en el piso</button>
+      <button type="button" class="ctl peq" id="elev-cero">NPT ±0.00</button>
       <span id="grupo-xr" class="fila" style="gap:6px">
         <button type="button" class="ctl peq" id="girar-izq" aria-label="Girar a la izquierda">⟲ 15°</button>
         <button type="button" class="ctl peq" id="girar-der" aria-label="Girar a la derecha">⟳ 15°</button>
