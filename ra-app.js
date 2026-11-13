@@ -112,9 +112,12 @@ function prepararIOS() {
   rehacerIOS();
 }
 function ponerIosSrc(url) {
-  // Franja de acción de Apple solo con el ícono de ajustes (sin títulos ni Apple Pay).
-  // La franja con página propia ("custom") hace que Apple agregue su botón de Apple Pay; esta no.
-  const franja = "callToAction=" + encodeURIComponent("\u2699\uFE0E") + "&checkoutTitle=" + encodeURIComponent("\u00A0");
+  // Franja de acción de Apple: el ícono de ajustes como botón y, a la izquierda, la escala y la elevación
+  // actuales (Apple no muestra la franja si el título va vacío). Sin Apple Pay: no se usa franja "custom".
+  const k = ajuste.k;
+  const franja = "callToAction=" + encodeURIComponent("\u2699\uFE0E") +
+    "&checkoutTitle=" + encodeURIComponent(k === 1 ? "Escala 1:1" : "Escala 1:" + k) +
+    "&checkoutSubtitle=" + encodeURIComponent("Nivel 0 " + conSigno(ajuste.elev));
   mv.setAttribute("ios-src", url.split("#")[0] + (franja ? "#" + franja : ""));
 }
 function abrirQuickLook() {
