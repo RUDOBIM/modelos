@@ -1,7 +1,9 @@
 // Realidad aumentada de BIM Loading: iPhone (AR Quick Look) y Android (WebXR propio).
-// Elevación = altura del NIVEL 0 sobre la superficie detectada (±0.00 m = nivel 0 en el piso).
-// Lo que queda bajo el piso (terreno, cimentación, sótanos) no se muestra, como en la realidad;
-// el modelo no se modifica: al subir la elevación aparece lo que queda por encima del piso.
+// El modelo se muestra siempre COMPLETO: nunca se corta ni se oculta nada.
+//  · Android: elevación = altura del NIVEL 0 sobre la superficie (±0.00 m = nivel 0 en el piso).
+//  · iPhone: la RA de Apple apoya en la superficie el punto más bajo del modelo (la base del terreno);
+//    elevación = altura de esa base (±0.00 m = apoyada). Se informa a qué altura queda el nivel 0.
+// Escala fija (1:1 … 1:500) o libre (pellizcar con dos dedos dentro de la RA).
 const $ = (id) => document.getElementById(id);
 const parametros = new URLSearchParams(location.search);
 const modelo = parametros.get("m") || "";
@@ -37,23 +39,36 @@ Promise.all([customElements.whenDefined("model-viewer"), hayRa]).then(([, ra]) =
 // ---------------------------------------------------------------- Ajustes (escala y elevación)
 const m2 = (v) => v.toFixed(2) + " m";
 const conSigno = (v) => Math.abs(v) < 0.005 ? "±0.00 m" : (v > 0 ? "+" : "−") + Math.abs(v).toFixed(2) + " m";
-const ajuste = { k: 1, elev: 0 };
+const ajuste = { k: 1, elev: 0, libre: false };
 let dims = null;
+let fondo = 0; // y del punto más bajo respecto al nivel 0 (negativo si hay terreno o sótanos), en m reales
+const textoEscala = (k) => "1:" + (k >= 10 ? Math.round(k) : +k.toFixed(1));
 let alAjustar = () => {};
 
 function pintarAjustes() {
   if (ajuste.elev < 0) ajuste.elev = 0;
-  $("escala").value = String(ajuste.k);
+  $("escala").value = ajuste.libre ? "libre" : String(ajuste.k);
   $("elev-valor").textContent = conSigno(ajuste.elev);
   $("elev-menos").disabled = ajuste.elev <= 0.0001;
   if (dims) {
     const k = ajuste.k;
-    $("medida").innerHTML = "Tamaño a escala " + (k === 1 ? "real" : "1:" + k) + ": <b>" + m2(dims.x / k) + " × " + m2(dims.z / k) +
-      "</b> de planta, <b>" + m2(dims.y / k) + "</b> de alto. Nivel 0 a <b>" + conSigno(ajuste.elev) + "</b> del piso.";
+    const esc = ajuste.libre ? "libre (" + textoEscala(k) + ")" : (k === 1 ? "real" : textoEscala(k));
+    let alturas = "Nivel 0 a <b>" + conSigno(ajuste.elev) + "</b> de la superficie.";
+    if (esApple) {
+      alturas = "Base del modelo a <b>" + conSigno(ajuste.elev) + "</b>; nivel 0 a <b>" + conSigno(ajuste.elev - fondo / k) + "</b> de la superficie.";
+    }
+    $("medida").innerHTML = "Tamaño a escala " + esc + ": <b>" + m2(dims.x / k) + " × " + m2(dims.z / k) +
+      "</b> de planta, <b>" + m2(dims.y / k) + "</b> de alto. " + alturas +
+      (ajuste.libre ? " Dentro de la RA, <b>pellizca con dos dedos</b> para cambiar el tamaño." : "");
   }
 }
 const cambiar = () => { pintarAjustes(); alAjustar(); };
-$("escala").addEventListener("change", () => { ajuste.k = Number($("escala").value); cambiar(); });
+$("escala").addEventListener("change", () => {
+  const v = $("escala").value;
+  ajuste.libre = v === "libre";
+  if (!ajuste.libre) ajuste.k = Number(v);
+  cambiar();
+});
 const paso = () => Number($("paso").value);
 $("elev-mas").addEventListener("click", () => { ajuste.elev = Math.round((ajuste.elev + paso()) * 100) / 100; cambiar(); });
 $("elev-menos").addEventListener("click", () => { ajuste.elev = Math.max(0, Math.round((ajuste.elev - paso()) * 100) / 100); cambiar(); });
@@ -70,8 +85,9 @@ mv.addEventListener("error", () => { $("carga").hidden = true; estado("No se pud
 let modo = "";
 mv.addEventListener("load", async () => {
   $("carga").hidden = true;
-  const d = mv.getDimensions();
+  const d = mv.getDimensions(), c = mv.getBoundingBoxCenter();
   dims = { x: d.x, y: d.y, z: d.z };
+  fondo = Math.min(0, c.y - d.y / 2);
   pintarAjustes();
   if (esApple) {
     if (!(await hayUsdz)) {
@@ -97,12 +113,14 @@ $("iniciar").addEventListener("click", () => {
 // =================================================================== iPhone (AR Quick Look)
 // La barra de arriba de la RA es de Apple. Abajo solo se permite una franja: se usa la mínima, con un
 // ícono de ajustes. Al tocarla vuelve aquí, se ajusta y se regresa a la RA.
-let usdzBase = null, blobActual = null, preparando = null;
+let usdzBase = null, blobActual = null, preparando = null, apoyoBase = null, numAjuste = 0;
 
 function prepararIOS() {
   $("grupo-xr").hidden = true;
   $("ios-lugar").appendChild($("ajustes"));
   mv.setAttribute("ar-scale", "fixed");
+  // Servicio que entrega el USDZ ajustado con una dirección normal del sitio (ver sw-ra.js).
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw-ra.js").catch(() => {});
   mv.addEventListener("quick-look-button-tapped", () => { $("ios-ajustes").hidden = false; });
   $("ios-cerrar").addEventListener("click", () => { $("ios-ajustes").hidden = true; });
   $("ios-volver").addEventListener("click", () => { $("ios-ajustes").hidden = true; abrirQuickLook(); });
@@ -115,11 +133,12 @@ function ponerIosSrc(url) {
   // Franja de acción de Apple: el ícono de ajustes como botón y, a la izquierda, la escala y la elevación
   // actuales (Apple no muestra la franja si el título va vacío). Sin Apple Pay: no se usa franja "custom".
   const k = ajuste.k;
+  // Escala libre: la RA de Apple deja pellizcar para cambiar el tamaño; fija: no.
+  mv.setAttribute("ar-scale", ajuste.libre ? "auto" : "fixed");
   const franja = "callToAction=" + encodeURIComponent("\u2699\uFE0E") +
-    "&checkoutTitle=" + encodeURIComponent(k === 1 ? "Escala 1:1" : "Escala 1:" + k) +
-    "&checkoutSubtitle=" + encodeURIComponent("Nivel 0 " + conSigno(ajuste.elev));
-  // Safari no muestra esta franja con archivos temporales (blob): ahí no se pide; al cerrar la RA
-  // la página ya tiene abierto el menú de ajustes.
+    "&checkoutTitle=" + encodeURIComponent(ajuste.libre ? "Escala libre" : "Escala " + textoEscala(k)) +
+    "&checkoutSubtitle=" + encodeURIComponent("Base " + conSigno(ajuste.elev));
+  // Safari no muestra esta franja con archivos temporales (blob); solo se usan si no hay servicio.
   const temporal = url.startsWith("blob:");
   mv.setAttribute("ios-src", url.split("#")[0] + (temporal ? "" : "#" + franja));
 }
@@ -148,47 +167,6 @@ function matrizDe(texto, nombre) {
   const fin = texto.indexOf(" )", j) + 2;
   return { j, fin, valor: texto.slice(j, fin) };
 }
-const leerArreglo = (t, nombre) => {
-  const i = t.indexOf(nombre + " = [");
-  if (i < 0) return null;
-  const a = i + nombre.length + 4, b = t.indexOf("]", a);
-  return { a, b, texto: t.slice(a, b) };
-};
-const numeros = (s) => s.length ? s.replace(/[()]/g, "").split(",").map(Number) : [];
-const tuplas = (arr, n) => { let s = ""; for (let i = 0; i < arr.length; i += n) s += (i ? ", " : "") + "(" + arr.slice(i, i + n).map((x) => +x.toFixed(5)).join(", ") + ")"; return s; };
-// Corta una malla del USDZ (triángulos, atributos por vértice) con el plano y = yc; conserva lo de arriba.
-function cortarMallaUsda(t, yc) {
-  const P = leerArreglo(t, "point3f[] points"), I = leerArreglo(t, "int[] faceVertexIndices");
-  const N = leerArreglo(t, "normal3f[] normals"), S = leerArreglo(t, "texCoord2f[] primvars:st");
-  if (!P || !I) return { texto: t, vacio: false };
-  const pts = numeros(P.texto), idx = numeros(I.texto), nor = N ? numeros(N.texto) : null, st = S ? numeros(S.texto) : null;
-  const sp = [], sn = [], ss = [], si = [];
-  const ver = (v) => ({ p: pts.slice(v * 3, v * 3 + 3), n: nor ? nor.slice(v * 3, v * 3 + 3) : null, s: st ? st.slice(v * 2, v * 2 + 2) : null });
-  const mez = (a, b, f) => ({ p: a.p.map((x, c) => x + (b.p[c] - x) * f), n: a.n && a.n.map((x, c) => x + (b.n[c] - x) * f), s: a.s && a.s.map((x, c) => x + (b.s[c] - x) * f) });
-  const poner = (v) => { si.push(sp.length / 3); sp.push(...v.p); if (nor) sn.push(...v.n); if (st) ss.push(...v.s); };
-  for (let i = 0; i + 2 < idx.length; i += 3) {
-    const tri = [ver(idx[i]), ver(idx[i + 1]), ver(idx[i + 2])];
-    const d = tri.map((v) => v.p[1] - yc);
-    if (d.every((x) => x <= 0)) continue;
-    const poli = [];
-    for (let j = 0; j < 3; j++) {
-      const a = tri[j], b = tri[(j + 1) % 3], da = d[j], db = d[(j + 1) % 3];
-      if (da >= 0) poli.push(a);
-      if ((da > 0 && db < 0) || (da < 0 && db > 0)) poli.push(mez(a, b, da / (da - db)));
-    }
-    for (let j = 1; j + 1 < poli.length; j++) { poner(poli[0]); poner(poli[j]); poner(poli[j + 1]); }
-  }
-  if (!si.length) return { texto: t, vacio: true };
-  const cambios = [[P, tuplas(sp, 3)], [I, si.join(", ")]];
-  if (N) cambios.push([N, tuplas(sn, 3)]);
-  if (S) cambios.push([S, tuplas(ss, 2)]);
-  const C = leerArreglo(t, "int[] faceVertexCounts");
-  if (C) cambios.push([C, new Array(si.length / 3).fill(3).join(", ")]);
-  cambios.sort((x, y) => y[0].a - x[0].a);
-  let r = t;
-  for (const [z, v] of cambios) r = r.slice(0, z.a) + v + r.slice(z.b);
-  return { texto: r, vacio: false };
-}
 async function usdzAjustado(k, elev) {
   const fflate = await import("./vendor/fflate.module.js");
   if (!usdzBase) usdzBase = new Uint8Array(await (await fetch(rutaUsdz)).arrayBuffer());
@@ -200,39 +178,22 @@ async function usdzAjustado(k, elev) {
   if (!esc) throw new Error("sin grupo de escala");
   const f = String(1 / k);
   texto = texto.slice(0, esc.j) + "( (" + f + ", 0, 0, 0), (0, " + f + ", 0, 0), (0, 0, " + f + ", 0), (0, 0, 0, 1) )" + texto.slice(esc.fin);
-  // El archivo publicado viene en su estado inicial (±0.00): lo que está bajo el nivel 0 viene guardado
-  // aparte en "bim_bajo.usda". Se vuelve a poner en la escena, junto al punto de apoyo.
+  // Archivos de la versión anterior guardaban aparte ("bim_bajo.usda") lo que está bajo el nivel 0:
+  // se vuelve a poner en la escena para que el modelo quede completo.
   if (texto.indexOf('def Xform "BIM_Bajo"') < 0 && archivos["bim_bajo.usda"]) {
     const capa = dec.decode(archivos["bim_bajo.usda"]);
     const blq = capa.slice(capa.indexOf("def Xform"));
     const iApo = texto.indexOf('def Xform "BIM_Apoyo"');
     if (iApo >= 0) { const linea = texto.lastIndexOf("\n", iApo) + 1; texto = texto.slice(0, linea) + blq.trimEnd() + "\n\n" + texto.slice(linea); }
   }
-  // Piso: en coordenadas del modelo queda a yc = -elev·k bajo el nivel 0.
-  const yc = -elev * k;
-  const iBajo = texto.indexOf('def Xform "BIM_Bajo"');
-  if (iBajo >= 0) {
-    const [ini, fin] = bloque(texto, iBajo);
-    if (elev <= 0.0001) {
-      texto = texto.slice(0, ini) + texto.slice(fin); // nivel 0 en el piso: no se muestra nada bajo el piso
-    } else {
-      let parte = texto.slice(ini, fin);
-      const hijos = [...parte.matchAll(/def Xform "([^"]+)" \(\s*prepend references = @\.\/(geometries\/[^@]+)@/g)];
-      for (const h of hijos.reverse()) {
-        const datos = archivos[h[2]];
-        if (!datos) continue;
-        const r = cortarMallaUsda(dec.decode(datos), yc);
-        if (r.vacio) { const [a, b] = bloque(parte, h.index); parte = parte.slice(0, a) + parte.slice(b); }
-        else archivos[h[2]] = enc.encode(r.texto);
-      }
-      texto = texto.slice(0, ini) + parte + texto.slice(fin);
-    }
-  }
-  // Punto de apoyo (1 mm): es el punto más bajo del archivo, el que Apple pone sobre el piso.
+  // Elevación: el punto de apoyo (1 mm) es el punto más bajo del archivo, el que Apple pone sobre la
+  // superficie. Se baja elev·k (en coordenadas del modelo) bajo la base para subir el modelo completo.
   const apo = matrizDe(texto, "BIM_Apoyo");
   if (apo) {
     const t = apo.valor.match(/\(([^()]*)\) \)$/)[1].split(",").map(Number);
-    texto = texto.slice(0, apo.j) + "( (1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (" + t[0] + ", " + yc + ", " + t[2] + ", 1) )" + texto.slice(apo.fin);
+    if (apoyoBase === null) apoyoBase = Math.min(t[1], fondo);
+    const y = apoyoBase - elev * k;
+    texto = texto.slice(0, apo.j) + "( (1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (" + t[0] + ", " + y + ", " + t[2] + ", 1) )" + texto.slice(apo.fin);
   }
   archivos["model.usda"] = enc.encode(texto);
   // Reempaquetar sin compresión con la alineación de 64 bytes que exige AR Quick Look.
@@ -247,6 +208,25 @@ async function usdzAjustado(k, elev) {
   }
   return new Blob([fflate.zipSync(entrada, { level: 0 })], { type: "model/vnd.usdz+zip" });
 }
+// Guarda el USDZ ajustado para que el servicio (sw-ra.js) lo entregue con una dirección normal del
+// sitio; así Apple sí muestra la franja de ajustes. Si no hay servicio, se usa un archivo temporal.
+async function guardarAjuste(blob) {
+  try {
+    const sw = navigator.serviceWorker;
+    if (sw && sw.controller && window.caches) {
+      const ruta = new URL(rutaUsdz, location.href);
+      ruta.searchParams.set("ra-ajuste", Date.now() + "-" + (++numAjuste));
+      const cache = await caches.open("blg-ra-ajustes");
+      for (const viejo of await cache.keys()) await cache.delete(viejo);
+      await cache.put(ruta.pathname + ruta.search, new Response(blob, {
+        headers: { "content-type": "model/vnd.usdz+zip", "content-length": String(blob.size) }
+      }));
+      return ruta.href;
+    }
+  } catch (e) { /* sin servicio: archivo temporal */ }
+  blobActual = URL.createObjectURL(blob);
+  return blobActual;
+}
 async function rehacerIOS() {
   // 1:1 y ±0.00 es el estado en que se publica el archivo: se abre directo (así Apple muestra la franja).
   const inicial = ajuste.k === 1 && ajuste.elev <= 0.0001;
@@ -257,8 +237,9 @@ async function rehacerIOS() {
     const blob = await tarea;
     if (tarea !== preparando) return;
     if (blobActual) { URL.revokeObjectURL(blobActual); blobActual = null; }
-    if (blob) blobActual = URL.createObjectURL(blob);
-    ponerIosSrc(blobActual || new URL(rutaUsdz, location.href).href);
+    let url = new URL(rutaUsdz, location.href).href;
+    if (blob) url = await guardarAjuste(blob);
+    ponerIosSrc(url);
     estado("");
   } catch (e) {
     if (tarea !== preparando) return;
@@ -313,6 +294,21 @@ function prepararXR() {
     aviso("Apunta al piso y toca la pantalla para colocar el modelo.");
   });
   alAjustar = aplicarXR;
+  // Escala libre: pellizcar con dos dedos en cualquier parte de la pantalla.
+  const ui = $("ra-ui");
+  const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  let pellizco = null, pinta = 0;
+  ui.addEventListener("touchstart", (e) => {
+    if (ajuste.libre && e.touches.length === 2) pellizco = { d: dist(e.touches), k: ajuste.k };
+  }, { passive: true });
+  ui.addEventListener("touchmove", (e) => {
+    if (!pellizco || e.touches.length !== 2) return;
+    ajuste.k = Math.min(5000, Math.max(0.1, pellizco.k * pellizco.d / Math.max(1, dist(e.touches))));
+    aplicarXR();
+    const ahora = performance.now();
+    if (ahora - pinta > 120) { pinta = ahora; pintarAjustes(); aviso("Escala " + textoEscala(ajuste.k), true); }
+  }, { passive: true });
+  ui.addEventListener("touchend", (e) => { if (pellizco && e.touches.length < 2) { pellizco = null; pintarAjustes(); } });
 }
 function salirXR() { if (xr && xr.sesion) xr.sesion.end(); }
 function prepararModelo() {
@@ -369,6 +365,7 @@ async function iniciarXR() {
   xr = xr || {};
   xr.sesion = sesion;
   $("ra-ui").hidden = false;
+  $("ra-ui").style.pointerEvents = "auto"; // para recibir el pellizco de la escala libre
   $("ra-panel").hidden = true;
   $("ra-ajustes").classList.remove("activo");
   aviso(xr.modelo ? "Apunta al piso y mueve el teléfono despacio…" : "Cargando el modelo…");
@@ -377,9 +374,6 @@ async function iniciarXR() {
   renderer.outputColorSpace = T.SRGBColorSpace;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = T.PCFSoftShadowMap;
-  // Plano de corte a la altura del piso: lo que queda debajo no se dibuja (el modelo no se modifica).
-  const corte = new T.Plane(new T.Vector3(0, 1, 0), 0);
-  renderer.clippingPlanes = [corte];
   renderer.xr.enabled = true;
   renderer.xr.setReferenceSpaceType("local");
   await renderer.xr.setSession(sesion);
@@ -447,7 +441,6 @@ async function iniciarXR() {
         anclaje.visible = false;
       }
     } else reticula.visible = false;
-    corte.constant = -(anclaje.position.y - 0.001);
     renderer.render(escena, camara);
   });
 }
