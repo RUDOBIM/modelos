@@ -96,9 +96,8 @@ $("iniciar").addEventListener("click", () => {
 
 // =================================================================== iPhone (AR Quick Look)
 // La barra de arriba de la RA es de Apple. Abajo solo se permite una franja: se usa la mínima, con un
-// ícono de ajustes (banner-ra.html). Al tocarla vuelve aquí, se ajusta y se regresa a la RA.
+// ícono de ajustes. Al tocarla vuelve aquí, se ajusta y se regresa a la RA.
 let usdzBase = null, blobActual = null, preparando = null;
-const urlBanner = new URL("banner-ra.html", location.href).href;
 
 function prepararIOS() {
   $("grupo-xr").hidden = true;
@@ -113,8 +112,9 @@ function prepararIOS() {
   rehacerIOS();
 }
 function ponerIosSrc(url) {
-  // La franja propia solo funciona desde https (el sitio publicado).
-  const franja = location.protocol === "https:" ? "custom=" + encodeURIComponent(urlBanner) + "&customHeight=small" : "";
+  // Franja de acción de Apple solo con el ícono de ajustes (sin títulos ni Apple Pay).
+  // La franja con página propia ("custom") hace que Apple agregue su botón de Apple Pay; esta no.
+  const franja = "callToAction=" + encodeURIComponent("\u2699\uFE0E") + "&checkoutTitle=" + encodeURIComponent("\u00A0");
   mv.setAttribute("ios-src", url.split("#")[0] + (franja ? "#" + franja : ""));
 }
 function abrirQuickLook() {
