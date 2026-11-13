@@ -29,28 +29,18 @@
 
   #volver { right: 12px; top: 12px; display: flex; align-items: center; gap: 6px; padding: 9px 13px;
             font: inherit; font-weight: 600; color: var(--texto); text-decoration: none; cursor: pointer; }
-  #volver svg, .btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.9;
-                          stroke-linecap: round; stroke-linejoin: round; }
+  svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 
   #panel { left: 50%; bottom: 14px; transform: translateX(-50%); width: min(calc(100vw - 20px), 440px); padding: 14px; }
   #panel h2 { margin: 0 0 8px; font-size: 15px; }
   .pasos { margin: 0 0 12px; padding-left: 20px; color: var(--tenue); font-size: 13px; }
   .pasos li { margin: 2px 0; }
   .pasos b { color: var(--texto); }
-  .opciones { display: flex; gap: 6px; margin: 0 0 12px; align-items: center; flex-wrap: wrap; }
-  .opciones .etq { font-size: 12.5px; color: var(--tenue); margin-right: 2px; }
-  .seg { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--borde); background: #fff; font: inherit;
-         font-size: 13px; color: var(--texto); cursor: pointer; }
-  .seg.activo { background: var(--acento); border-color: var(--acento); color: #fff; }
-  .escalas { display: flex; gap: 5px; flex-wrap: wrap; margin: 0 0 6px; align-items: center; }
-  .escalas .etq { font-size: 12.5px; color: var(--tenue); margin-right: 2px; }
-  .escalas .seg { padding: 5px 10px; font-size: 12.5px; }
-  #medida { margin: 0 0 12px; font-size: 12px; color: var(--tenue); }
-  #medida b { color: var(--texto); }
   .btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 14px;
          border-radius: 12px; border: 0; background: var(--acento); color: #fff; font: inherit; font-size: 15px;
          font-weight: 600; cursor: pointer; }
   .btn:disabled { opacity: .55; cursor: default; }
+  .btn.sec { background: #fff; color: var(--texto); border: 1px solid var(--borde); }
   #estado { margin: 10px 0 0; font-size: 12.5px; color: var(--tenue); text-align: center; min-height: 1em; }
   #estado.error { color: #a12020; }
 
@@ -65,20 +55,51 @@
   .progreso { height: 5px; background: #dfe5ec; border-radius: 3px; overflow: hidden; margin-top: 8px; }
   #carga-barra { height: 100%; width: 0; background: var(--acento); transition: width .2s; }
 
-  @media (max-height: 560px) { .pasos { display: none; } }
+  /* ---------- Menú de ajustes (escala y elevación). En Android va DENTRO de la realidad aumentada. */
+  #ajustes { display: grid; gap: 9px; }
+  .fila { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .fila > .etq { flex: 0 0 74px; font-size: 12.5px; color: var(--tenue); font-weight: 600; }
+  #ajustes select { flex: 1; min-width: 0; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--borde);
+                    font: inherit; font-size: 14px; background: #fff; color: var(--texto); }
+  #paso { flex: 0 0 auto !important; }
+  .ctl { min-width: 40px; height: 38px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--borde); background: #fff;
+         font: inherit; font-size: 15px; font-weight: 700; color: var(--texto); cursor: pointer; display: inline-flex;
+         align-items: center; justify-content: center; gap: 5px; }
+  .ctl.peq { font-size: 12.5px; font-weight: 600; }
+  .ctl:disabled { opacity: .45; }
+  #elev-valor { flex: 1; min-width: 86px; text-align: center; font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums;
+                padding: 8px 6px; border-radius: 10px; background: #f2f5f9; }
+  #medida { margin: 0; font-size: 12px; color: var(--tenue); }
+  #medida b { color: var(--texto); }
+  #nota-ios { margin: 0; font-size: 12px; color: #8a5a00; }
+
+  /* Capa que se muestra encima de la cámara (WebXR dom-overlay, Android). */
+  #ra-ui { position: fixed; inset: 0; z-index: 10; pointer-events: none; font: 14px/1.4 "Segoe UI", system-ui, Roboto, Arial, sans-serif; color: var(--texto); }
+  #ra-ui .caja { pointer-events: auto; background: rgba(255,255,255,.94); border-radius: 14px; box-shadow: 0 6px 22px rgba(0,0,0,.25); }
+  #ra-arriba { position: absolute; left: 10px; right: 10px; top: 10px; display: flex; gap: 8px; align-items: center; padding: 8px 8px 8px 12px; }
+  #ra-aviso { flex: 1; font-size: 13px; font-weight: 600; }
+  #ra-abajo { position: absolute; left: 10px; right: 10px; bottom: 12px; padding: 12px; max-width: 460px; margin: 0 auto; }
+  #ra-abajo .cab { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  #ra-abajo .cab b { font-size: 14px; }
+  #ra-abajo.plegado #ajustes { display: none; }
+  #ra-abajo.plegado .cab { margin-bottom: 0; }
+
+  /* iPhone: el mismo menú en la página, para volver a la vista de RA de Apple ya ajustado. */
+  #ios-ajustes { position: fixed; inset: 0; z-index: 20; background: rgba(15,23,35,.45); display: flex; align-items: flex-end; justify-content: center; }
+  #ios-ajustes .hoja { width: min(100vw, 460px); background: #fff; border-radius: 18px 18px 0 0; padding: 16px 14px 22px; display: grid; gap: 12px; }
+  #ios-ajustes h2 { margin: 0; font-size: 16px; }
 </style>
 </head>
 <body>
 
 <div id="cabecera" class="flotante"><div class="marca">BIM <span>LOADING</span></div><div id="titulo">Realidad aumentada</div></div>
 <a id="volver" class="flotante" href="./" title="Regresar al visor con herramientas">
-  <svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>Volver al visor
+  <svg class="i" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>Volver al visor
 </a>
 
-<model-viewer id="mv" ar ar-modes="webxr scene-viewer quick-look" ar-placement="floor" ar-scale="auto"
+<model-viewer id="mv" ar ar-modes="webxr scene-viewer quick-look" ar-placement="floor" ar-scale="fixed"
               camera-controls touch-action="pan-y" shadow-intensity="1" environment-image="neutral"
               interaction-prompt="none" loading="eager" alt="Modelo 3D de BIM Loading">
-  <!-- Botón propio: se oculta el que trae model-viewer -->
   <button slot="ar-button" hidden></button>
 </model-viewer>
 
@@ -89,27 +110,11 @@
     <h2>Ver el modelo en tu espacio</h2>
     <ol class="pasos">
       <li>Toca <b>Iniciar realidad aumentada</b> y permite el uso de la cámara.</li>
-      <li>Apunta al <b>piso</b> (o a la pared) y mueve el teléfono despacio hasta que reconozca la superficie.</li>
-      <li>El modelo se apoya sobre su <b>nivel 0</b>. <b>Arrastra</b> para moverlo y <b>gira con dos dedos</b>. Con la escala <b>Libre</b> también puedes pellizcar para cambiar su tamaño.</li>
+      <li>Apunta al <b>piso</b> o a una mesa y mueve el teléfono despacio hasta que reconozca la superficie.</li>
+      <li>El modelo se apoya en su <b>nivel 0</b>, completo. Ya dentro de la realidad aumentada eliges la <b>escala</b> y ajustas la <b>elevación</b> en metros.</li>
     </ol>
-    <div class="opciones" role="group" aria-label="Superficie">
-      <span class="etq">Superficie:</span>
-      <button type="button" class="seg activo" data-sup="floor">Piso o mesa</button>
-      <button type="button" class="seg" data-sup="wall">Pared</button>
-    </div>
-    <div class="escalas" role="group" aria-label="Escala">
-      <span class="etq">Escala:</span>
-      <button type="button" class="seg activo" data-esc="1">Real 1:1</button>
-      <button type="button" class="seg" data-esc="20">1:20</button>
-      <button type="button" class="seg" data-esc="50">1:50</button>
-      <button type="button" class="seg" data-esc="100">1:100</button>
-      <button type="button" class="seg" data-esc="200">1:200</button>
-      <button type="button" class="seg" data-esc="500">1:500</button>
-      <button type="button" class="seg" data-esc="libre" title="Ajusta el tamaño pellizcando con dos dedos">Libre</button>
-    </div>
-    <p id="medida"></p>
     <button id="iniciar" class="btn" type="button" disabled>
-      <svg viewBox="0 0 24 24"><path d="M12 2l8 4.5v9L12 20l-8-4.5v-9z"/><path d="M4 6.5l8 4.5 8-4.5M12 11v9"/></svg>
+      <svg class="i" viewBox="0 0 24 24"><path d="M12 2l8 4.5v9L12 20l-8-4.5v-9z"/><path d="M4 6.5l8 4.5 8-4.5M12 11v9"/></svg>
       Iniciar realidad aumentada
     </button>
   </div>
@@ -123,200 +128,452 @@
   <p id="estado" role="status"></p>
 </section>
 
+<!-- Menú de escala y elevación (se coloca dentro de la RA en Android, o en la hoja de iPhone) -->
+<div id="ajustes-origen" hidden>
+  <div id="ajustes">
+    <div class="fila">
+      <span class="etq">Escala</span>
+      <select id="escala" aria-label="Escala">
+        <option value="1">Real 1:1</option>
+        <option value="10">1:10</option>
+        <option value="20">1:20</option>
+        <option value="25">1:25</option>
+        <option value="50">1:50</option>
+        <option value="75">1:75</option>
+        <option value="100">1:100</option>
+        <option value="200">1:200</option>
+        <option value="500">1:500</option>
+      </select>
+    </div>
+    <div class="fila">
+      <span class="etq">Elevación</span>
+      <button type="button" class="ctl" id="elev-menos" aria-label="Bajar">−</button>
+      <span id="elev-valor" aria-live="polite">0.00 m</span>
+      <button type="button" class="ctl" id="elev-mas" aria-label="Subir">+</button>
+      <select id="paso" aria-label="Paso de elevación">
+        <option value="0.01">± 0.01 m</option>
+        <option value="0.05">± 0.05 m</option>
+        <option value="0.10" selected>± 0.10 m</option>
+        <option value="0.50">± 0.50 m</option>
+        <option value="1.00">± 1.00 m</option>
+      </select>
+    </div>
+    <div class="fila">
+      <button type="button" class="ctl peq" id="elev-cero">Nivel 0 en el piso</button>
+      <span id="grupo-xr" class="fila" style="gap:6px">
+        <button type="button" class="ctl peq" id="girar-izq" aria-label="Girar a la izquierda">⟲ 15°</button>
+        <button type="button" class="ctl peq" id="girar-der" aria-label="Girar a la derecha">⟳ 15°</button>
+        <button type="button" class="ctl peq" id="recolocar">Recolocar</button>
+      </span>
+    </div>
+    <p id="nota-ios" hidden></p>
+    <p id="medida"></p>
+  </div>
+</div>
+
+<!-- Android: capa encima de la cámara durante la RA -->
+<div id="ra-ui" hidden>
+  <div id="ra-arriba" class="caja">
+    <span id="ra-aviso">Apunta al piso y mueve el teléfono despacio…</span>
+    <button type="button" class="ctl peq" id="ra-salir">Salir</button>
+  </div>
+  <div id="ra-abajo" class="caja">
+    <div class="cab"><b>Escala y elevación</b><button type="button" class="ctl peq" id="ra-plegar">Ocultar</button></div>
+  </div>
+</div>
+
+<!-- iPhone: hoja de ajustes que abre el botón dentro de la vista de RA de Apple -->
+<div id="ios-ajustes" hidden>
+  <div class="hoja">
+    <h2>Escala y elevación</h2>
+    <div id="ios-lugar"></div>
+    <button id="ios-volver" class="btn" type="button" disabled>Volver a la realidad aumentada</button>
+    <button id="ios-cerrar" class="btn sec" type="button">Cerrar</button>
+  </div>
+</div>
+
 <script src="vendor/qrcode.js" defer></script>
-<script>
-(() => {
-  const $ = (id) => document.getElementById(id);
-  const parametros = new URLSearchParams(location.search);
-  const modelo = parametros.get("m") || "";
-  const titulo = parametros.get("t") || "";
-  const mv = $("mv");
-  // La vista previa ocupa el espacio libre arriba del panel.
-  const ajustarVista = () => { mv.style.bottom = ($("panel").offsetHeight + 24) + "px"; };
-  new ResizeObserver(ajustarVista).observe($("panel"));
-  window.addEventListener("resize", ajustarVista);
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const parametros = new URLSearchParams(location.search);
+const modelo = parametros.get("m") || "";
+const titulo = parametros.get("t") || "";
+const mv = $("mv");
+const ajustarVista = () => { mv.style.bottom = ($("panel").offsetHeight + 24) + "px"; };
+new ResizeObserver(ajustarVista).observe($("panel"));
+window.addEventListener("resize", ajustarVista);
+$("volver").href = "./" + location.search;
+if (titulo) { $("titulo").textContent = titulo; document.title = titulo + " · Realidad aumentada · BIM Loading"; }
+const estado = (texto, error) => { $("estado").textContent = texto || ""; $("estado").classList.toggle("error", !!error); };
 
-  // Regresar al visor con el mismo modelo.
-  $("volver").href = "./" + location.search;
-  if (titulo) { $("titulo").textContent = titulo; document.title = titulo + " · Realidad aumentada · BIM Loading"; }
+if (!modelo || /^[a-z][a-z0-9+.-]*:/i.test(modelo) || modelo.startsWith("//")) {
+  $("carga").hidden = true;
+  estado(modelo ? "La dirección del modelo no es válida." : "Falta indicar el modelo (?m=archivo.glb).", true);
+  throw new Error("sin modelo");
+}
 
-  const estado = (texto, error) => { $("estado").textContent = texto || ""; $("estado").classList.toggle("error", !!error); };
+const esApple = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const rutaUsdz = modelo.replace(/\.glb$/i, ".usdz");
+const rutaRa = modelo.replace(/\.glb$/i, ".ra.glb");
+const existe = (r) => fetch(r, { method: "HEAD", cache: "no-store" }).then((x) => x.ok).catch(() => false);
+const hayUsdz = existe(rutaUsdz);
+const hayRa = existe(rutaRa);
+// Android con WebXR: visor de RA propio (menú dentro de la RA). Se revisa sin pedir permisos.
+const hayXR = !esApple && navigator.xr && navigator.xr.isSessionSupported
+  ? navigator.xr.isSessionSupported("immersive-ar").catch(() => false) : Promise.resolve(false);
 
-  // Solo modelos de este mismo sitio (misma regla que el visor).
-  if (!modelo || /^[a-z][a-z0-9+.-]*:/i.test(modelo) || modelo.startsWith("//")) {
-    $("carga").hidden = true;
-    estado(modelo ? "La dirección del modelo no es válida." : "Falta indicar el modelo (?m=archivo.glb).", true);
+Promise.all([customElements.whenDefined("model-viewer"), hayRa]).then(([, ra]) => {
+  mv.src = new URL(ra ? rutaRa : modelo, location.href).href;
+}).catch(() => estado("No se pudo cargar el visor. Revisa tu conexión.", true));
+
+// ---------------------------------------------------------------- Estado de ajustes
+// Unidades: metros con 2 decimales. "Elevación" = altura del NIVEL 0 sobre la superficie detectada.
+const m2 = (v) => (Math.abs(v) < 0.005 ? 0 : v).toFixed(2) + " m";
+const conSigno = (v) => Math.abs(v) < 0.005 ? "0.00 m" : (v > 0 ? "+" : "−") + Math.abs(v).toFixed(2) + " m";
+const ajuste = { k: 1, elev: 0 };
+let dims = null;   // tamaño real (1:1) del modelo, en m
+let fondo = 0;     // y del punto más bajo respecto al nivel 0 (negativo si hay terreno o sótanos)
+let alAjustar = () => {};
+const minimoIOS = () => esApple ? -fondo / ajuste.k : -Infinity; // en iPhone el punto más bajo no puede bajar del piso
+
+function pintarAjustes() {
+  if (esApple && ajuste.elev < minimoIOS()) ajuste.elev = minimoIOS();
+  $("escala").value = String(ajuste.k);
+  $("elev-valor").textContent = conSigno(ajuste.elev);
+  if (esApple) {
+    $("elev-menos").disabled = ajuste.elev <= minimoIOS() + 1e-6;
+    $("elev-cero").textContent = "Apoyar en el punto más bajo";
+    const n = $("nota-ios");
+    n.hidden = fondo > -0.005;
+    n.textContent = "En iPhone el modelo no puede quedar bajo el piso: con el terreno completo, el nivel 0 queda como mínimo a " + m2(minimoIOS()) + ".";
+  }
+  if (dims) {
+    const k = ajuste.k;
+    $("medida").innerHTML = "Tamaño a escala " + (k === 1 ? "real" : "1:" + k) + ": <b>" + m2(dims.x / k) + " × " + m2(dims.z / k) +
+      "</b> de planta, <b>" + m2(dims.y / k) + "</b> de alto. Nivel 0 a <b>" + conSigno(ajuste.elev) + "</b> de la superficie.";
+  }
+}
+$("escala").addEventListener("change", () => {
+  // Si en iPhone estaba apoyado en su punto más bajo, sigue apoyado con la nueva escala.
+  const apoyado = esApple && ajuste.elev <= minimoIOS() + 1e-6;
+  ajuste.k = Number($("escala").value);
+  if (apoyado) ajuste.elev = minimoIOS();
+  pintarAjustes(); alAjustar();
+});
+const paso = () => Number($("paso").value);
+$("elev-mas").addEventListener("click", () => { ajuste.elev = Math.round((ajuste.elev + paso()) * 100) / 100; pintarAjustes(); alAjustar(); });
+$("elev-menos").addEventListener("click", () => { ajuste.elev = Math.round((ajuste.elev - paso()) * 100) / 100; pintarAjustes(); alAjustar(); });
+$("elev-cero").addEventListener("click", () => { ajuste.elev = esApple ? minimoIOS() : 0; pintarAjustes(); alAjustar(); });
+
+// ---------------------------------------------------------------- Carga de la vista previa
+mv.addEventListener("progress", (e) => {
+  const p = e.detail && e.detail.totalProgress || 0;
+  $("carga-barra").style.width = Math.round(p * 100) + "%";
+  $("carga-texto").textContent = "Cargando modelo… " + Math.round(p * 100) + " %";
+});
+mv.addEventListener("error", () => { $("carga").hidden = true; estado("No se pudo cargar el modelo.", true); });
+
+let modo = "";
+mv.addEventListener("load", async () => {
+  $("carga").hidden = true;
+  const d = mv.getDimensions(), c = mv.getBoundingBoxCenter();
+  dims = { x: d.x, y: d.y, z: d.z };
+  fondo = Math.min(0, c.y - d.y / 2);
+  if (esApple) {
+    if (!(await hayUsdz)) {
+      estado("Este modelo aún no tiene versión para iPhone. Vuelve a publicarlo desde el Hub de modelos y recarga esta página.", true);
+      return;
+    }
+    modo = "ios";
+    prepararIOS();
+  } else if (await hayXR) {
+    modo = "xr";
+    prepararXR();
+  } else if (mv.canActivateAR) {
+    modo = "sceneviewer";
+    estado("Este teléfono no permite el menú dentro de la RA; se abrirá el visor de Google a escala real.");
+  } else {
+    mostrarQR();
     return;
   }
+  ajuste.elev = esApple ? minimoIOS() : 0;
+  pintarAjustes();
+  if (modo === "ios") ponerIosSrc(new URL(rutaUsdz, location.href).href);
+  $("iniciar").disabled = false;
+});
 
-  // iPhone/iPad usan AR Quick Look con un archivo USDZ que el Hub prepara en la PC al publicar.
-  // Si el iPhone tuviera que convertir el modelo él mismo, Safari se queda sin memoria y recarga la página.
-  const esApple = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-  const rutaUsdz = modelo.replace(/\.glb$/i, ".usdz");
-  let usdzListo = false;
-  const revisarUsdz = fetch(rutaUsdz, { method: "HEAD", cache: "no-store" })
-    .then((r) => { if (r.ok) { usdzListo = true; mv.setAttribute("ios-src", new URL(rutaUsdz, location.href).href); } })
-    .catch(() => {});
-  if (esApple) {
-    // En AR Quick Look el modelo se coloca sobre superficies horizontales (piso o mesa).
-    const pared = document.querySelector('[data-sup="wall"]');
-    if (pared) pared.hidden = true;
-  }
+$("iniciar").addEventListener("click", () => {
+  if (modo === "xr") return iniciarXR();
+  if (modo === "ios") return abrirQuickLook();
+  if (modo === "sceneviewer") { try { mv.activateAR(); } catch (e) { estado("No se pudo iniciar la realidad aumentada.", true); } }
+});
 
-  // Superficie: piso/mesa o pared.
-  for (const b of document.querySelectorAll("[data-sup]")) {
-    b.addEventListener("click", () => {
-      mv.setAttribute("ar-placement", b.dataset.sup);
-      for (const o of document.querySelectorAll("[data-sup]")) o.classList.toggle("activo", o === b);
-    });
-  }
+// =================================================================== iPhone (AR Quick Look)
+// La vista de RA de iPhone es de Apple y no admite menús propios; solo un botón (banner) abajo.
+// Ese botón abre aquí la hoja de escala y elevación y se regresa a la RA con el archivo ya ajustado.
+let usdzBase = null, blobActual = null, preparando = null, apoyoBase = null;
+const IDENTIDAD = "( (1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0, 0, 0, 1) )";
 
-  // Versión de RA (recortada en el nivel 0 y aligerada) que prepara el Hub; si no existe, el GLB del visor.
-  const rutaRa = modelo.replace(/\.glb$/i, ".ra.glb");
-  const revisarRa = fetch(rutaRa, { method: "HEAD", cache: "no-store" }).then((r) => r.ok).catch(() => false);
-  Promise.all([customElements.whenDefined("model-viewer"), revisarRa]).then(([, hayRa]) => {
-    mv.src = new URL(hayRa ? rutaRa : modelo, location.href).href;
-  }).catch(() => estado("No se pudo cargar el visor de realidad aumentada. Revisa tu conexión.", true));
-
-  // ---------------------------------------------------------------- Escalas
-  // Real 1:1 y escalas de maqueta. En escalas fijas no se puede pellizcar, para que la medida sea exacta.
-  let escala = 1, libre = false, preparando = null, dimsBase = null;
-  const formato = (m) => m >= 1 ? m.toFixed(m >= 10 ? 1 : 2) + " m" : Math.round(m * 1000) + " mm";
-  function mostrarMedida() {
-    if (!dimsBase) return;
-    const k = libre ? 1 : escala;
-    const d = { x: dimsBase.x / k, y: dimsBase.y / k, z: dimsBase.z / k };
-    $("medida").innerHTML = (libre ? "Tamaño inicial: " : "Tamaño en tu espacio: ") +
-      "<b>" + formato(d.x) + " × " + formato(d.z) + "</b> de planta y <b>" + formato(d.y) + "</b> de alto.";
+function prepararIOS() {
+  $("grupo-xr").hidden = true;
+  $("ios-lugar").appendChild($("ajustes"));
+  mv.setAttribute("ar-scale", "fixed");
+  ponerIosSrc(new URL(rutaUsdz, location.href).href);
+  mv.addEventListener("quick-look-button-tapped", () => { $("ios-ajustes").hidden = false; $("ios-volver").disabled = !!preparando; });
+  $("ios-cerrar").addEventListener("click", () => { $("ios-ajustes").hidden = true; });
+  $("ios-volver").addEventListener("click", () => { $("ios-ajustes").hidden = true; abrirQuickLook(); });
+  let espera = null;
+  alAjustar = () => { clearTimeout(espera); $("ios-volver").disabled = true; espera = setTimeout(rehacerIOS, 250); };
+}
+function ponerIosSrc(url) {
+  const k = ajuste.k;
+  const sub = "Escala " + (k === 1 ? "real 1:1" : "1:" + k) + " · Nivel 0 a " + conSigno(ajuste.elev);
+  const h = "callToAction=" + encodeURIComponent("Escala y elevación") +
+            "&checkoutTitle=" + encodeURIComponent(titulo || "Modelo BIM Loading") +
+            "&checkoutSubtitle=" + encodeURIComponent(sub);
+  mv.setAttribute("ios-src", url.split("#")[0] + "#" + h);
+}
+function abrirQuickLook() {
+  estado("Abriendo la vista de realidad aumentada de iPhone… Toca «Escala y elevación» abajo para ajustar.");
+  try { mv.activateAR(); } catch (e) { estado("No se pudo iniciar la realidad aumentada en este dispositivo.", true); }
+}
+function reemplazarMatriz(texto, nombre, nueva) {
+  const i = texto.indexOf('def Xform "' + nombre + '"');
+  if (i < 0) return null;
+  const j = texto.indexOf("matrix4d xformOp:transform = ", i) + "matrix4d xformOp:transform = ".length;
+  const fin = texto.indexOf(" )", j) + 2;
+  return { actual: texto.slice(j, fin), texto: (m) => texto.slice(0, j) + m + texto.slice(fin) };
+}
+// Reescribe solo dos transformaciones del USDZ (sin volver a convertir el modelo):
+//  · "BIM_Escala": factor 1/k.   · "BIM_Apoyo": punto de 1 mm que marca dónde toca el piso.
+// Se reempaqueta sin compresión cuidando la alineación de 64 bytes que exige AR Quick Look.
+async function usdzAjustado(k, elev) {
+  const fflate = await import("./vendor/fflate.module.js");
+  if (!usdzBase) usdzBase = new Uint8Array(await (await fetch(rutaUsdz)).arrayBuffer());
+  const archivos = fflate.unzipSync(usdzBase);
+  let texto = new TextDecoder().decode(archivos["model.usda"]);
+  const esc = reemplazarMatriz(texto, "BIM_Escala");
+  if (!esc) throw new Error("sin grupo de escala");
+  const f = String(1 / k);
+  texto = esc.texto("( (" + f + ", 0, 0, 0), (0, " + f + ", 0, 0), (0, 0, " + f + ", 0), (0, 0, 0, 1) )");
+  const apo = reemplazarMatriz(texto, "BIM_Apoyo");
+  if (apo) {
+    const t = apo.actual.match(/\(([^()]*)\) \)$/)[1].split(",").map(Number);
+    if (!apoyoBase) apoyoBase = { x: t[0], y: t[1], z: t[2] };
+    // El punto más bajo del archivo es el que Apple apoya en el piso: se baja el punto de apoyo para subir el modelo.
+    const y = Math.min(apoyoBase.y, -elev * k);
+    texto = apo.texto("( (1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (" + apoyoBase.x + ", " + y + ", " + apoyoBase.z + ", 1) )");
   }
-  // iPhone: el USDZ trae un grupo "BIM_Escala"; se reescribe su transformación y se vuelve a empaquetar
-  // (sin convertir el modelo), cuidando la alineación de 64 bytes que exige AR Quick Look.
-  let usdzBase = null, blobActual = null;
-  async function usdzEscalado(k) {
-    const fflate = await import("./vendor/fflate.module.js");
-    if (!usdzBase) usdzBase = new Uint8Array(await (await fetch(rutaUsdz)).arrayBuffer());
-    const archivos = fflate.unzipSync(usdzBase);
-    const texto = new TextDecoder().decode(archivos["model.usda"]);
-    const i = texto.indexOf('def Xform "BIM_Escala"');
-    if (i < 0) throw new Error("sin grupo de escala");
-    const identidad = "( (1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0, 0, 0, 1) )";
-    const j = texto.indexOf(identidad, i);
-    const f = String(1 / k);
-    const nuevo = texto.slice(0, j) + "( (" + f + ", 0, 0, 0), (0, " + f + ", 0, 0), (0, 0, " + f + ", 0), (0, 0, 0, 1) )" + texto.slice(j + identidad.length);
-    archivos["model.usda"] = new TextEncoder().encode(nuevo);
-    const entrada = {};
-    let pos = 0;
-    for (const nombre of Object.keys(archivos)) {
-      const datos = archivos[nombre];
-      const base = pos + 30 + new TextEncoder().encode(nombre).length + 4;
-      const relleno = (64 - (base % 64)) % 64;
-      entrada[nombre] = [datos, { extra: { 12345: new Uint8Array(relleno) } }];
-      pos = base + relleno + datos.length;
-    }
-    return new Blob([fflate.zipSync(entrada, { level: 0 })], { type: "model/vnd.usdz+zip" });
+  archivos["model.usda"] = new TextEncoder().encode(texto);
+  const entrada = {};
+  let pos = 0;
+  for (const nombre of Object.keys(archivos)) {
+    const datos = archivos[nombre];
+    const base = pos + 30 + new TextEncoder().encode(nombre).length + 4;
+    const relleno = (64 - (base % 64)) % 64;
+    entrada[nombre] = [datos, { extra: { 12345: new Uint8Array(relleno) } }];
+    pos = base + relleno + datos.length;
   }
-  async function aplicarEscala() {
-    const modo = libre ? "auto" : "fixed";
-    if (mv.getAttribute("ar-scale") !== modo) mv.setAttribute("ar-scale", modo);
-    const k = libre ? 1 : escala;
-    if (mv.loaded && !dimsBase) dimsBase = mv.getDimensions(); // tamaño real (escala 1:1)
-    mostrarMedida();
-    if (!esApple || !usdzListo) return;
+  return new Blob([fflate.zipSync(entrada, { level: 0 })], { type: "model/vnd.usdz+zip" });
+}
+async function rehacerIOS() {
+  const k = ajuste.k, elev = ajuste.elev;
+  const tarea = preparando = (k === 1 && elev <= minimoIOS() + 1e-6) ? Promise.resolve(null) : usdzAjustado(k, elev);
+  $("ios-volver").textContent = "Preparando…";
+  try {
+    const blob = await tarea;
+    if (tarea !== preparando) return;
     if (blobActual) { URL.revokeObjectURL(blobActual); blobActual = null; }
-    if (k === 1) { mv.setAttribute("ios-src", new URL(rutaUsdz, location.href).href); return; }
-    $("iniciar").disabled = true;
-    estado("Preparando la escala 1:" + k + "…");
-    const tarea = preparando = usdzEscalado(k);
-    try {
-      const blob = await tarea;
-      if (tarea !== preparando) return;
-      blobActual = URL.createObjectURL(blob);
-      mv.setAttribute("ios-src", blobActual);
-      estado("");
-    } catch (e) {
-      estado("No se pudo preparar esa escala; se usará la escala real.", true);
-      mv.setAttribute("ios-src", new URL(rutaUsdz, location.href).href);
-    }
-    $("iniciar").disabled = false;
+    if (blob) blobActual = URL.createObjectURL(blob);
+    ponerIosSrc(blobActual || new URL(rutaUsdz, location.href).href);
+  } catch (e) {
+    estado("No se pudo preparar ese ajuste; se usará la escala real.", true);
+    ponerIosSrc(new URL(rutaUsdz, location.href).href);
   }
-  for (const b of document.querySelectorAll("[data-esc]")) {
-    b.addEventListener("click", () => {
-      libre = b.dataset.esc === "libre";
-      escala = libre ? 1 : Number(b.dataset.esc);
-      for (const o of document.querySelectorAll("[data-esc]")) o.classList.toggle("activo", o === b);
-      aplicarEscala();
+  if (tarea === preparando) { preparando = null; $("ios-volver").disabled = false; $("ios-volver").textContent = "Volver a la realidad aumentada"; }
+}
+
+// =================================================================== Android (WebXR propio)
+// Detecta el piso, coloca el modelo con su nivel 0 sobre la superficie (sin recortar nada) y muestra
+// encima de la cámara el menú de escala y elevación, que se aplica al momento.
+let T = null, xr = null;
+function prepararXR() {
+  $("ra-abajo").appendChild($("ajustes"));
+  // Se precarga el motor 3D y el modelo para que la RA arranque al tocar el botón.
+  import("./vendor/three-ra.js").then(async (m) => {
+    T = m;
+    const draco = new T.DRACOLoader();
+    draco.setDecoderPath(new URL("draco/", location.href).href);
+    const cargador = new T.GLTFLoader();
+    cargador.setDRACOLoader(draco);
+    const gltf = await cargador.loadAsync(new URL((await hayRa) ? rutaRa : modelo, location.href).href);
+    xr = { escena3d: gltf.scene };
+    prepararModelo();
+  }).catch(() => { modo = mv.canActivateAR ? "sceneviewer" : modo; });
+  for (const id of ["ra-arriba", "ra-abajo"]) $(id).addEventListener("beforexrselect", (e) => e.preventDefault());
+  $("ra-salir").addEventListener("click", () => xr && xr.sesion && xr.sesion.end());
+  $("ra-plegar").addEventListener("click", () => {
+    const p = $("ra-abajo").classList.toggle("plegado");
+    $("ra-plegar").textContent = p ? "Mostrar" : "Ocultar";
+  });
+  $("girar-izq").addEventListener("click", () => girar(15));
+  $("girar-der").addEventListener("click", () => girar(-15));
+  $("recolocar").addEventListener("click", () => { if (xr) { xr.colocado = false; aviso("Apunta al piso y toca la pantalla para colocar el modelo."); } });
+  alAjustar = aplicarXR;
+}
+function prepararModelo() {
+  const escena = xr.escena3d;
+  // Nivel 0: dato que deja el Hub en la versión de RA; si no, los niveles del exportador o el punto más bajo.
+  let datos = null;
+  escena.traverse((o) => { if (!datos && o.userData && o.userData.blgRA) datos = o.userData.blgRA; });
+  let y0 = 0;
+  if (!datos) {
+    let niveles = null;
+    escena.traverse((o) => { if (!niveles && o.userData && o.userData.niveles) niveles = o.userData.niveles; });
+    if (niveles && niveles.length) y0 = niveles.slice().sort((a, b) => Math.abs(a.y) - Math.abs(b.y))[0].y;
+    else y0 = new T.Box3().setFromObject(escena).min.y;
+  }
+  const caja = new T.Box3().setFromObject(escena);
+  const modeloCentrado = new T.Group();
+  escena.position.set(-(caja.min.x + caja.max.x) / 2, -y0, -(caja.min.z + caja.max.z) / 2);
+  modeloCentrado.add(escena);
+  escena.traverse((o) => { if (o.isMesh) { o.castShadow = true; } });
+  xr.ancho = Math.max(caja.max.x - caja.min.x, caja.max.z - caja.min.z);
+  xr.alto = caja.max.y - caja.min.y;
+  dims = { x: caja.max.x - caja.min.x, y: caja.max.y - caja.min.y, z: caja.max.z - caja.min.z };
+  fondo = caja.min.y - y0;
+  xr.modelo = modeloCentrado;
+  pintarAjustes();
+}
+const aviso = (t) => { $("ra-aviso").textContent = t; };
+function girar(g) { if (xr && xr.anclaje) xr.giro += T.MathUtils.degToRad(g), xr.anclaje.rotation.y = xr.yaw + xr.giro; }
+function aplicarXR() {
+  if (!xr || !xr.escalado) return;
+  const s = 1 / ajuste.k;
+  xr.escalado.scale.setScalar(s);
+  xr.escalado.position.y = ajuste.elev;
+  // Sombra y luz a la medida del modelo en la escala actual.
+  const L = Math.max(0.3, (xr.ancho * s) * 1.6);
+  xr.sombra.scale.setScalar(L);
+  const cam = xr.luz.shadow.camera;
+  cam.left = cam.bottom = -L / 2; cam.right = cam.top = L / 2;
+  cam.near = 0.01; cam.far = L * 4 + xr.alto * s * 2;
+  xr.luz.position.set(L * 0.6, L * 1.5, L * 0.4);
+  cam.updateProjectionMatrix();
+}
+
+async function iniciarXR() {
+  if (!T) { estado("Preparando la realidad aumentada… vuelve a tocar en un momento."); return; }
+  let sesion;
+  try {
+    sesion = await navigator.xr.requestSession("immersive-ar", {
+      requiredFeatures: ["hit-test"],
+      optionalFeatures: ["dom-overlay", "light-estimation"],
+      domOverlay: { root: $("ra-ui") }
     });
+  } catch (e) {
+    if (mv.canActivateAR) { modo = "sceneviewer"; estado("No se pudo abrir la RA con menú; se usará el visor de Google."); try { mv.activateAR(); } catch (_) {} }
+    else estado("Tu dispositivo no pudo iniciar la realidad aumentada.", true);
+    return;
   }
-
-  mv.addEventListener("progress", (e) => {
-    const p = e.detail && e.detail.totalProgress || 0;
-    $("carga-barra").style.width = Math.round(p * 100) + "%";
-    $("carga-texto").textContent = "Cargando modelo… " + Math.round(p * 100) + " %";
+  xr = xr || {};
+  xr.sesion = sesion;
+  $("ra-ui").hidden = false;
+  aviso(xr.modelo ? "Apunta al piso y mueve el teléfono despacio…" : "Cargando el modelo…");
+  const renderer = new T.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+  renderer.outputColorSpace = T.SRGBColorSpace;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = T.PCFSoftShadowMap;
+  renderer.xr.enabled = true;
+  renderer.xr.setReferenceSpaceType("local");
+  await renderer.xr.setSession(sesion);
+  const escena = new T.Scene();
+  const camara = new T.PerspectiveCamera();
+  escena.add(new T.HemisphereLight(0xffffff, 0x8a8f99, 1.6));
+  const luz = new T.DirectionalLight(0xffffff, 1.8);
+  luz.castShadow = true;
+  luz.shadow.mapSize.set(2048, 2048);
+  luz.shadow.bias = -0.0005;
+  // Retícula sobre la superficie detectada.
+  const reticula = new T.Mesh(new T.RingGeometry(0.09, 0.12, 40).rotateX(-Math.PI / 2), new T.MeshBasicMaterial({ color: 0x0a84ff }));
+  reticula.matrixAutoUpdate = false;
+  reticula.visible = false;
+  escena.add(reticula);
+  // anclaje (posición en el piso y giro) → escalado (1/k y elevación del nivel 0) → modelo.
+  const anclaje = new T.Group();
+  const escalado = new T.Group();
+  anclaje.add(escalado);
+  const sombra = new T.Mesh(new T.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new T.ShadowMaterial({ opacity: 0.28 }));
+  sombra.receiveShadow = true;
+  anclaje.add(sombra, luz, luz.target);
+  anclaje.visible = false;
+  escena.add(anclaje);
+  Object.assign(xr, { renderer, escena, anclaje, escalado, sombra, luz, reticula, colocado: false, yaw: 0, giro: 0 });
+  const espacio = renderer.xr.getReferenceSpace();
+  const espacioVista = await sesion.requestReferenceSpace("viewer");
+  const fuente = await sesion.requestHitTestSource({ space: espacioVista });
+  const conModelo = () => { if (xr.modelo && !xr.modelo.parent) { escalado.add(xr.modelo); aplicarXR(); pintarAjustes(); aviso("Apunta al piso y toca la pantalla para colocar el modelo."); } };
+  const pos = new T.Vector3(), q = new T.Quaternion(), e = new T.Vector3();
+  sesion.addEventListener("select", () => {
+    if (!xr.modelo || !reticula.visible) return;
+    xr.colocado = true;
+    anclaje.visible = true;
+    aviso("Modelo colocado. Ajusta la escala y la elevación abajo.");
   });
-
-  mv.addEventListener("load", async () => {
-    $("carga").hidden = true;
-    await revisarUsdz;
-    aplicarEscala();
-    if (esApple && !usdzListo) {
-      $("iniciar").disabled = true;
-      estado("Este modelo aún no tiene versión para iPhone. Vuelve a publicarlo desde el Hub de modelos (botón «Volver a publicar») y recarga esta página.", true);
-      return;
-    }
-    if (mv.canActivateAR) {
-      $("iniciar").disabled = false;
-      estado("");
-    } else {
-      mostrarQR();
-    }
+  sesion.addEventListener("end", () => {
+    renderer.setAnimationLoop(null);
+    fuente.cancel && fuente.cancel();
+    if (xr.modelo) xr.modelo.removeFromParent();
+    renderer.dispose();
+    $("ra-ui").hidden = true;
+    xr.sesion = null;
+    estado("Puedes iniciar de nuevo o volver al visor.");
   });
-
-  mv.addEventListener("error", () => {
-    $("carga").hidden = true;
-    estado("No se pudo cargar el modelo.", true);
+  renderer.setAnimationLoop((t, frame) => {
+    conModelo();
+    if (frame && !xr.colocado) {
+      const r = frame.getHitTestResults(fuente);
+      if (r.length) {
+        const pose = r[0].getPose(espacio);
+        reticula.visible = true;
+        reticula.matrix.fromArray(pose.transform.matrix);
+        if (xr.modelo) {
+          // Vista previa: el modelo sigue a la retícula, de frente a la cámara, hasta que se toca la pantalla.
+          reticula.matrix.decompose(pos, q, e);
+          anclaje.position.copy(pos);
+          const c = renderer.xr.getCamera().position;
+          xr.yaw = Math.atan2(c.x - pos.x, c.z - pos.z);
+          anclaje.rotation.set(0, xr.yaw + xr.giro, 0);
+          anclaje.visible = true;
+        }
+      } else {
+        reticula.visible = false;
+        if (!xr.colocado) anclaje.visible = false;
+      }
+    } else reticula.visible = false;
+    renderer.render(escena, camara);
   });
+}
 
-  $("iniciar").addEventListener("click", () => {
-    if (esApple && !usdzListo) return;
-    // La vista previa se queda a tamaño normal; la escala elegida se aplica solo dentro de la RA
-    // (en iPhone ya va dentro del archivo USDZ).
-    const k = libre ? 1 : escala;
-    if (!esApple) mv.scale = (1 / k) + " " + (1 / k) + " " + (1 / k);
-    estado(esApple ? "Abriendo la vista de realidad aumentada de iPhone…" : "Abriendo la cámara…");
-    try { mv.activateAR(); } catch (e) { estado("No se pudo iniciar la realidad aumentada en este dispositivo.", true); }
-  });
-
-  mv.addEventListener("ar-status", (e) => {
-    const s = e.detail && e.detail.status;
-    if (s === "session-started") estado("Mueve el teléfono despacio apuntando a la superficie…");
-    else if (s === "object-placed") estado("Modelo colocado. Arrastra, gira o pellizca para ajustarlo.");
-    else if (s === "not-presenting") { mv.scale = "1 1 1"; estado("Puedes iniciar de nuevo, cambiar la escala o volver al visor."); }
-    else if (s === "failed") mv.scale = "1 1 1", estado("Tu dispositivo no pudo iniciar la realidad aumentada. Prueba con Chrome en Android o Safari en iPhone.", true);
-  });
-
-  mv.addEventListener("ar-tracking", (e) => {
-    if (e.detail && e.detail.status === "not-tracking") estado("Se perdió la superficie: apunta de nuevo al piso con buena luz.");
-  });
-
-  function mostrarQR() {
-    $("modo-ra").hidden = true;
-    $("modo-qr").hidden = false;
-    const local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
-    if (local) {
-      $("qr").hidden = true;
-      $("qr-caja").querySelector("p").innerHTML = "La realidad aumentada se usa desde el celular. <b>Publica el modelo en la web</b> y ábrelo desde tu teléfono.";
-      return;
-    }
-    const pintar = () => {
-      if (!window.qrcode) return setTimeout(pintar, 200);
-      const q = window.qrcode(0, "M");
-      q.addData(location.href);
-      q.make();
-      $("qr").innerHTML = q.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
-    };
-    pintar();
+// =================================================================== Computadora
+function mostrarQR() {
+  $("modo-ra").hidden = true;
+  $("modo-qr").hidden = false;
+  if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
+    $("qr").hidden = true;
+    $("qr-caja").querySelector("p").innerHTML = "La realidad aumentada se usa desde el celular. <b>Publica el modelo en la web</b> y ábrelo desde tu teléfono.";
+    return;
   }
-})();
+  const pintar = () => {
+    if (!window.qrcode) return setTimeout(pintar, 200);
+    const q = window.qrcode(0, "M");
+    q.addData(location.href);
+    q.make();
+    $("qr").innerHTML = q.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
+  };
+  pintar();
+}
 </script>
 </body>
 </html>
