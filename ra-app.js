@@ -126,7 +126,11 @@ mv.addEventListener("load", async () => {
 $("iniciar").addEventListener("click", () => {
   if (modo === "xr") return iniciarXR();
   if (modo === "ios") return abrirQuickLook();
-  if (modo === "sceneviewer") { try { mv.activateAR(); } catch (e) { estado("No se pudo iniciar la realidad aumentada.", true); } }
+  if (modo === "sceneviewer") {
+    // Solo el visor de Google (si se dejara WebXR primero, model-viewer repetiría el mismo error).
+    mv.setAttribute("ar-modes", "scene-viewer");
+    try { mv.activateAR(); } catch (e) { estado("No se pudo iniciar la realidad aumentada.", true); }
+  }
 });
 
 // =================================================================== iPhone (AR Quick Look)
@@ -377,8 +381,15 @@ async function iniciarXR() {
       domOverlay: { root: $("ra-ui") }
     });
   } catch (e) {
-    if (mv.canActivateAR) { modo = "sceneviewer"; estado("No se pudo abrir la RA con ajustes; se usará el visor de Google."); try { mv.activateAR(); } catch (_) {} }
-    else estado("Tu dispositivo no pudo iniciar la realidad aumentada.", true);
+    // Se muestra la causa exacta para poder diagnosticar el equipo.
+    const causa = (e && (e.name || "") + (e && e.message ? ": " + e.message : "")) || "sin detalle";
+    if (mv.canActivateAR) {
+      // El visor de Google necesita un toque nuevo (el navegador bloquea abrirlo después de un error).
+      modo = "sceneviewer";
+      estado("Este equipo no abrió la RA con ajustes (" + causa + "). Toca otra vez «Iniciar realidad aumentada» para abrir el visor de Google.", true);
+    } else {
+      estado("Este equipo no pudo iniciar la realidad aumentada (" + causa + "). Ábrela en la app de Chrome (menú ⋮ → «Abrir en Chrome») y verifica que tenga «Servicios de Google Play para RA».", true);
+    }
     return;
   }
   xr = xr || {};
