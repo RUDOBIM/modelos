@@ -1,5 +1,5 @@
 {
- "actualizado": "2026-11-13T07:22:44.796Z",
+ "actualizado": "2026-11-18T00:03:27.932Z",
  "modelos": [
   {
    "nombre": "001-BLO-A-ARQ-VAR-V1",
@@ -33,6 +33,17 @@
    "ra": "modelos/taller-mecanico--kof-su-sjdr-0665-cct-arq-m3d-arquitectura-a00.ra.glb",
    "bytes": 18689728,
    "fecha": "2026-11-13T07:22:44.795Z"
+  },
+  {
+   "nombre": "VCE-M3D-ARQ-ARQUITECTURA-V0",
+   "proyecto": "VICTORIA COLLEGE",
+   "tipo": "Completo",
+   "ruta": "modelos/victoria-college--vce-m3d-arq-arquitectura-v0.glb",
+   "miniatura": "miniaturas/victoria-college--vce-m3d-arq-arquitectura-v0.jpg",
+   "usdz": "modelos/victoria-college--vce-m3d-arq-arquitectura-v0.usdz",
+   "ra": "modelos/victoria-college--vce-m3d-arq-arquitectura-v0.ra.glb",
+   "bytes": 8413900,
+   "fecha": "2026-11-18T00:03:27.923Z"
   }
  ]
 }
