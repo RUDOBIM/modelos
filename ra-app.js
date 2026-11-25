@@ -6,11 +6,17 @@ const $ = (id) => document.getElementById(id);
 const parametros = new URLSearchParams(location.search);
 const modelo = parametros.get("m") || "";
 const titulo = parametros.get("t") || "";
+// Filtro de vínculos que llega del visor ("vinc": claves ocultas separadas por "|"; "~anfitrion" = modelo anfitrión).
+const ocultosVinc = new Set((parametros.get("vinc") || "").split("|").filter(Boolean));
 const mv = $("mv");
 const ajustarVista = () => { mv.style.bottom = ($("panel").offsetHeight + 24) + "px"; };
 new ResizeObserver(ajustarVista).observe($("panel"));
 window.addEventListener("resize", ajustarVista);
 $("volver").href = "./" + location.search;
+if (ocultosVinc.size) {
+  const nombres = [...ocultosVinc].map((c) => (c === "~anfitrion" ? "Modelo anfitrión" : c));
+  setTimeout(() => { if (!$("estado").textContent) estado("Filtro de vínculos del visor: se ocultan " + nombres.join(", ") + "."); }, 0);
+}
 if (titulo) { $("titulo").textContent = titulo; document.title = titulo + " · Realidad aumentada · BIM Loading"; }
 const estado = (texto, error) => { $("estado").textContent = texto || ""; $("estado").classList.toggle("error", !!error); };
 
@@ -141,6 +147,20 @@ function bloque(texto, desde) {
   }
   return [texto.lastIndexOf("\n", desde) + 1, i + 1];
 }
+// Quita del USDZ los vínculos ocultos en el visor (y su parte bajo el nivel 0).
+function filtrarVinculos(texto) {
+  if (!ocultosVinc.size) return texto;
+  const m = texto.match(/^# BIM_VINCULOS (.*)$/m);
+  const titulos = m ? JSON.parse(m[1]) : [];
+  const nombres = [];
+  if (ocultosVinc.has("~anfitrion")) nombres.push("BIM_Anfitrion", "BIM_Bajo_Anfitrion");
+  titulos.forEach((t, i) => { if (ocultosVinc.has(t)) nombres.push("BIM_Vinculo_" + (i + 1), "BIM_Bajo_Vinculo_" + (i + 1)); });
+  for (const n of nombres) {
+    let i;
+    while ((i = texto.indexOf('def Xform "' + n + '"')) >= 0) { const [a, b] = bloque(texto, i); texto = texto.slice(0, a) + texto.slice(b); }
+  }
+  return texto;
+}
 function matrizDe(texto, nombre) {
   const i = texto.indexOf('def Xform "' + nombre + '"');
   if (i < 0) return null;
@@ -228,6 +248,7 @@ async function usdzAjustado(k, elev) {
       texto = texto.slice(0, ini) + parte + texto.slice(fin);
     }
   }
+  texto = filtrarVinculos(texto);
   // Punto de apoyo (1 mm): es el punto más bajo del archivo, el que Apple pone sobre el piso.
   const apo = matrizDe(texto, "BIM_Apoyo");
   if (apo) {
@@ -249,7 +270,7 @@ async function usdzAjustado(k, elev) {
 }
 async function rehacerIOS() {
   // 1:1 y ±0.00 es el estado en que se publica el archivo: se abre directo (así Apple muestra la franja).
-  const inicial = ajuste.k === 1 && ajuste.elev <= 0.0001;
+  const inicial = ajuste.k === 1 && ajuste.elev <= 0.0001 && !ocultosVinc.size;
   const tarea = preparando = inicial ? Promise.resolve(null) : usdzAjustado(ajuste.k, ajuste.elev);
   $("ios-volver").disabled = true;
   $("ios-volver").textContent = "Preparando…";
@@ -326,6 +347,13 @@ function prepararModelo() {
     if (niveles && niveles.length) y0 = niveles.slice().sort((a, b) => Math.abs(a.y) - Math.abs(b.y))[0].y;
     else y0 = new T.Box3().setFromObject(escena).min.y;
   }
+  // Vínculos ocultos en el visor.
+  const titulosV = (datos && datos.vinculos) || [];
+  escena.traverse((o) => {
+    if (o.name === "BIM_Anfitrion" && ocultosVinc.has("~anfitrion")) o.visible = false;
+    const v = /^BIM_Vinculo_(\d+)$/.exec(o.name);
+    if (v && ocultosVinc.has(titulosV[Number(v[1]) - 1])) o.visible = false;
+  });
   const caja = new T.Box3().setFromObject(escena);
   const centrado = new T.Group();
   escena.position.set(-(caja.min.x + caja.max.x) / 2, -y0, -(caja.min.z + caja.max.z) / 2);
