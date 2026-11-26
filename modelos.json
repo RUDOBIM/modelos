@@ -1,5 +1,5 @@
 {
- "actualizado": "2026-11-26T02:36:27.629Z",
+ "actualizado": "2026-11-26T02:36:35.135Z",
  "modelos": [
   {
    "nombre": "001-BLO-A-ARQ-VAR-V1",
@@ -10,7 +10,7 @@
    "usdz": "modelos/casa-de-campo--001-blo-a-arq-var-v1.usdz",
    "ra": "modelos/casa-de-campo--001-blo-a-arq-var-v1.ra.glb",
    "bytes": 7967128,
-   "fecha": "2026-11-25T15:54:32.231Z"
+   "fecha": "2026-11-26T02:36:35.135Z"
   },
   {
    "nombre": "001-BLO-A-ARQ-VAR-V1_WEB_comprimido",
