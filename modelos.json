@@ -1,5 +1,5 @@
 {
- "actualizado": "2026-11-26T01:36:16.528Z",
+ "actualizado": "2026-11-26T01:37:31.460Z",
  "modelos": [
   {
    "nombre": "001-BLO-A-ARQ-VAR-V1",
@@ -22,17 +22,6 @@
    "ra": "modelos/casa-de-campo--001-blo-a-arq-var-v1_web_comprimido.ra.glb",
    "bytes": 7591532,
    "fecha": "2026-11-13T07:20:58.785Z"
-  },
-  {
-   "nombre": "001-COR-PCQ-BIM-A-DEPORTIVO-QUINTIN-ARAUZ",
-   "proyecto": "DEPORTIVO QUINTIN ARAUZ",
-   "tipo": "Completo",
-   "ruta": "modelos/deportivo-quintin-arauz--001-cor-pcq-bim-a-deportivo-quintin-arauz.glb",
-   "miniatura": "miniaturas/deportivo-quintin-arauz--001-cor-pcq-bim-a-deportivo-quintin-arauz.jpg",
-   "usdz": "modelos/deportivo-quintin-arauz--001-cor-pcq-bim-a-deportivo-quintin-arauz.usdz",
-   "ra": "modelos/deportivo-quintin-arauz--001-cor-pcq-bim-a-deportivo-quintin-arauz.ra.glb",
-   "bytes": 3715472,
-   "fecha": "2026-11-26T01:36:16.527Z"
   },
   {
    "nombre": "KOF-SU-SJDR-0665-CCT-ARQ-M3D-Arquitectura-A00",
